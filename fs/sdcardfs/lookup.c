@@ -207,7 +207,6 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 	struct dentry *lower_dir_dentry = NULL;
 	struct dentry *lower_dentry;
 	const char *name;
-	struct nameidata lower_nd;
 	struct path lower_path;
 	struct qstr this;
 
@@ -226,16 +225,16 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 	/* Use vfs_path_lookup to check if the dentry exists or not */
 #ifdef CONFIG_SDCARD_FS_CI_SEARCH
 	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name,
-			LOOKUP_CASE_INSENSITIVE, &lower_nd);
+			LOOKUP_CASE_INSENSITIVE, &lower_path);
 #else
 	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name, 0,
-			&lower_nd);
+			&lower_path);
 #endif
 
 	/* no error: handle positive dentries */
 	if (!err) {
-		sdcardfs_set_lower_path(dentry, &lower_nd.path);
-		err = sdcardfs_interpose(dentry, dentry->d_sb, &lower_nd.path);
+		sdcardfs_set_lower_path(dentry, &lower_path);
+		err = sdcardfs_interpose(dentry, dentry->d_sb, &lower_path);
 		if (err) /* path_put underlying path on error */
 			sdcardfs_put_reset_lower_path(dentry);
 		goto out;
@@ -313,9 +312,12 @@ struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 		ret = ERR_PTR(err);
 		goto out;
 	}
+
 	ret = __sdcardfs_lookup(dentry, nd, &lower_parent_path);
 	if (IS_ERR(ret))
+	{
 		goto out;
+	}
 	if (ret) 
 		dentry = ret;
 	if (dentry->d_inode)

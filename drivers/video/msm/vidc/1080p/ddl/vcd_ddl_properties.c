@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -293,6 +293,11 @@ static u32 ddl_set_dec_property(struct ddl_client_context *ddl,
 				frame_size->width, frame_size->height);
 			vcd_status = VCD_S_SUCCESS;
 		}
+	}
+	break;
+	case VCD_I_SET_TURBO_CLK:
+	{
+		vcd_status = VCD_S_SUCCESS;
 	}
 	break;
 	case VCD_I_BUFFER_FORMAT:
@@ -1042,6 +1047,34 @@ static u32 ddl_set_enc_property(struct ddl_client_context *ddl,
 	case VCD_REQ_PERF_LEVEL:
 		vcd_status = VCD_S_SUCCESS;
 		break;
+	case VCD_I_ENABLE_DELIMITER_FLAG:
+	{
+		struct vcd_property_avc_delimiter_enable *delimiter_enable =
+			(struct vcd_property_avc_delimiter_enable *)
+				property_value;
+		if (sizeof(struct vcd_property_avc_delimiter_enable) ==
+			property_hdr->sz &&
+			encoder->codec.codec == VCD_CODEC_H264) {
+			encoder->avc_delimiter_enable =
+			delimiter_enable->avc_delimiter_enable_flag;
+			vcd_status = VCD_S_SUCCESS;
+		}
+		break;
+	}
+	case VCD_I_ENABLE_VUI_TIMING_INFO:
+	{
+		struct vcd_property_vui_timing_info_enable *vui_timing_enable =
+			(struct vcd_property_vui_timing_info_enable *)
+				property_value;
+		if (sizeof(struct vcd_property_vui_timing_info_enable) ==
+			property_hdr->sz &&
+			encoder->codec.codec == VCD_CODEC_H264) {
+			encoder->vui_timinginfo_enable =
+			vui_timing_enable->vui_timing_info;
+			vcd_status = VCD_S_SUCCESS;
+		}
+		break;
+	}
 	case VCD_I_ENABLE_VUI_BITSTREAM_RESTRICT_FLAG:
 	{
 		struct vcd_property_bitstream_restrict_enable *restrict_enable =
@@ -1059,7 +1092,7 @@ static u32 ddl_set_enc_property(struct ddl_client_context *ddl,
 	default:
 		DDL_MSG_ERROR("INVALID ID %d\n", (int)property_hdr->prop_id);
 		vcd_status = VCD_ERR_ILLEGAL_OP;
-		break;
+	break;
 	}
 	return vcd_status;
 }
@@ -1539,6 +1572,24 @@ static u32 ddl_get_enc_property(struct ddl_client_context *ddl,
 			vcd_status = VCD_S_SUCCESS;
 		}
 		break;
+	case VCD_I_ENABLE_DELIMITER_FLAG:
+		if (sizeof(struct vcd_property_avc_delimiter_enable) ==
+			property_hdr->sz) {
+			((struct vcd_property_avc_delimiter_enable *)
+				property_value)->avc_delimiter_enable_flag =
+					encoder->avc_delimiter_enable;
+			vcd_status = VCD_S_SUCCESS;
+		}
+		break;
+	case VCD_I_ENABLE_VUI_TIMING_INFO:
+		if (sizeof(struct vcd_property_vui_timing_info_enable) ==
+			property_hdr->sz) {
+			((struct vcd_property_vui_timing_info_enable *)
+				property_value)->vui_timing_info =
+					encoder->vui_timinginfo_enable;
+			vcd_status = VCD_S_SUCCESS;
+		}
+		break;
 	case VCD_I_ENABLE_VUI_BITSTREAM_RESTRICT_FLAG:
 		if (sizeof(struct vcd_property_bitstream_restrict_enable) ==
 			property_hdr->sz) {
@@ -1618,6 +1669,7 @@ static u32 ddl_set_enc_dynamic_property(struct ddl_client_context *ddl,
 			vcd_status = VCD_S_SUCCESS;
 		}
 	}
+	break;
 	case VCD_I_INTRA_REFRESH:
 	{
 		struct vcd_property_intra_refresh_mb_number
@@ -1708,6 +1760,8 @@ static void ddl_set_default_enc_property(struct ddl_client_context *ddl)
 	encoder->slice_delivery_info.enable = 0;
 	encoder->slice_delivery_info.num_slices = 0;
 	encoder->slice_delivery_info.num_slices_enc = 0;
+	encoder->avc_delimiter_enable = 0;
+	encoder->vui_timinginfo_enable = 0;
 }
 
 static void ddl_set_default_enc_profile(struct ddl_encoder_data *encoder)
@@ -1775,7 +1829,7 @@ static void ddl_set_default_enc_rc_params(
 	encoder->rc_level.frame_level_rc = true;
 	encoder->qp_range.min_qp = 0x1;
 	if (codec == VCD_CODEC_H264) {
-		encoder->qp_range.min_qp = 0x1;
+		encoder->qp_range.min_qp = 0x2;
 		encoder->qp_range.max_qp = 0x33;
 		encoder->session_qp.i_frame_qp = 0x14;
 		encoder->session_qp.p_frame_qp = 0x14;
@@ -1785,12 +1839,20 @@ static void ddl_set_default_enc_rc_params(
 		encoder->adaptive_rc.disable_dark_region_as_flag = true;
 		encoder->adaptive_rc.disable_smooth_region_as_flag = true;
 		encoder->adaptive_rc.disable_static_region_as_flag = true;
+	} else if (codec == VCD_CODEC_MPEG4) {
+		encoder->qp_range.max_qp       = 0x1f;
+		encoder->qp_range.min_qp       = 0x1;
+		encoder->session_qp.i_frame_qp = 0x2;
+		encoder->session_qp.p_frame_qp = 0x2;
+		encoder->session_qp.b_frame_qp = 0x2;
+		encoder->rc_level.frame_level_rc = true;
+		encoder->rc_level.mb_level_rc  = false;
 	} else {
 		encoder->qp_range.max_qp       = 0x1f;
 		encoder->qp_range.min_qp       = 0x1;
-		encoder->session_qp.i_frame_qp = 0xd;
-		encoder->session_qp.p_frame_qp = 0xd;
-		encoder->session_qp.b_frame_qp = 0xd;
+		encoder->session_qp.i_frame_qp = 0x9;
+		encoder->session_qp.p_frame_qp = 0x9;
+		encoder->session_qp.b_frame_qp = 0x9;
 		encoder->rc_level.frame_level_rc = true;
 		encoder->rc_level.mb_level_rc  = false;
 	}
@@ -1883,7 +1945,7 @@ u32 ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
 		if (!decoder->cont_mode)
 			min_dpb = ddl_decoder_min_num_dpb(decoder);
 		else
-			min_dpb = 5;
+			min_dpb = res_trk_get_min_dpb_count();
 		frame_size = &decoder->client_frame_size;
 		output_buf_req = &decoder->client_output_buf_req;
 		input_buf_req = &decoder->client_input_buf_req;
@@ -1896,7 +1958,20 @@ u32 ddl_set_default_decoder_buffer_req(struct ddl_decoder_data *decoder,
 		output_buf_req = &decoder->actual_output_buf_req;
 		input_buf_req = &decoder->actual_input_buf_req;
 		min_dpb = decoder->min_dpb_num;
-		y_cb_cr_size = decoder->y_cb_cr_size;
+		if ((decoder->buf_format.buffer_format ==
+			VCD_BUFFER_FORMAT_TILE_4x2) &&
+			(frame_size->height < MDP_MIN_TILE_HEIGHT)) {
+			frame_size->height = MDP_MIN_TILE_HEIGHT;
+			ddl_calculate_stride(frame_size,
+				!decoder->progressive_only);
+			y_cb_cr_size = ddl_get_yuv_buffer_size(
+				frame_size,
+				&decoder->buf_format,
+				(!decoder->progressive_only),
+				decoder->hdr.decoding, NULL);
+			decoder->y_cb_cr_size = y_cb_cr_size;
+		} else
+			y_cb_cr_size = decoder->y_cb_cr_size;
 	}
 	memset(output_buf_req, 0,
 		sizeof(struct vcd_buffer_requirement));

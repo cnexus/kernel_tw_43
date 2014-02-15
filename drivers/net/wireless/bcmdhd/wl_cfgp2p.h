@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_cfgp2p.h 415472 2013-07-30 10:52:35Z $
+ * $Id: wl_cfgp2p.h 415464 2013-07-30 09:14:39Z $
  */
 #ifndef _wl_cfgp2p_h_
 #define _wl_cfgp2p_h_
@@ -89,7 +89,7 @@ struct p2p_info {
 	unsigned long status;
 	struct ether_addr dev_addr;
 	struct ether_addr int_addr;
-	struct p2p_bss bss_idx[P2PAPI_BSSCFG_MAX];
+	struct p2p_bss bss[P2PAPI_BSSCFG_MAX];
 	struct timer_list listen_timer;
 	wl_p2p_sched_t noa;
 	wl_p2p_ops_t ops;
@@ -127,11 +127,11 @@ enum wl_cfgp2p_status {
 };
 
 
-#define wl_to_p2p_bss_ndev(wl, type)		((wl)->p2p->bss_idx[type].dev)
-#define wl_to_p2p_bss_bssidx(wl, type)		((wl)->p2p->bss_idx[type].bssidx)
-#define wl_to_p2p_bss_saved_ie(wl, type)	((wl)->p2p->bss_idx[type].saved_ie)
-#define wl_to_p2p_bss_private(wl, type)		((wl)->p2p->bss_idx[type].private_data)
-#define wl_to_p2p_bss(wl, type)			((wl)->p2p->bss_idx[type])
+#define wl_to_p2p_bss_ndev(wl, type)		((wl)->p2p->bss[type].dev)
+#define wl_to_p2p_bss_bssidx(wl, type)		((wl)->p2p->bss[type].bssidx)
+#define wl_to_p2p_bss_saved_ie(wl, type)	((wl)->p2p->bss[type].saved_ie)
+#define wl_to_p2p_bss_private(wl, type)		((wl)->p2p->bss[type].private_data)
+#define wl_to_p2p_bss(wl, type)			((wl)->p2p->bss[type])
 #define wl_get_p2p_status(wl, stat) ((!(wl)->p2p_supported) ? 0 : test_bit(WLP2P_STATUS_ ## stat, \
 									&(wl)->p2p->status))
 #define wl_set_p2p_status(wl, stat) ((!(wl)->p2p_supported) ? 0 : set_bit(WLP2P_STATUS_ ## stat, \
@@ -257,9 +257,11 @@ extern s32
 wl_cfgp2p_clear_management_ie(struct wl_priv *wl, s32 bssidx);
 
 extern s32
-wl_cfgp2p_find_idx(struct wl_priv *wl, struct net_device *ndev);
+wl_cfgp2p_find_idx(struct wl_priv *wl, struct net_device *ndev, s32 *index);
 extern struct net_device *
 wl_cfgp2p_find_ndev(struct wl_priv *wl, s32 bssidx);
+extern s32
+wl_cfgp2p_find_type(struct wl_priv *wl, s32 bssidx, s32 *type);
 
 
 extern s32
@@ -337,7 +339,7 @@ wl_cfgp2p_is_ifops(const struct net_device_ops *if_ops);
 
 /* If the provision discovery is for JOIN operations,
  * then we need not do an internal scan to find GO.
- */
+*/
 #define IS_PROV_DISC_WITHOUT_GROUP_ID(p2p_ie, len) \
 	(wl_cfgp2p_retreive_p2pattrib(p2p_ie, P2P_SEID_GROUP_ID) == NULL)
 
@@ -346,9 +348,9 @@ wl_cfgp2p_is_ifops(const struct net_device_ops *if_ops);
 					(frame->action == P2PSD_ACTION_ID_GAS_CREQ)))
 #define IS_P2P_PUB_ACT_REQ(frame, p2p_ie, len) \
 					(wl_cfgp2p_is_pub_action(frame, len) && \
-					((frame->subtype == P2P_PAF_GON_REQ) || \
-					(frame->subtype == P2P_PAF_INVITE_REQ) || \
-					((frame->subtype == P2P_PAF_PROVDIS_REQ) && \
+						((frame->subtype == P2P_PAF_GON_REQ) || \
+						(frame->subtype == P2P_PAF_INVITE_REQ) || \
+						((frame->subtype == P2P_PAF_PROVDIS_REQ) && \
 						IS_PROV_DISC_WITHOUT_GROUP_ID(p2p_ie, len))))
 #define IS_P2P_PUB_ACT_RSP_SUBTYPE(subtype) ((subtype == P2P_PAF_GON_RSP) || \
 							((subtype == P2P_PAF_GON_CONF) || \

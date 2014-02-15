@@ -40,7 +40,7 @@ void revert_fsids(const struct cred * old_cred)
 }
 
 static int sdcardfs_create(struct inode *dir, struct dentry *dentry,
-			 int mode, struct nameidata *nd)
+			 umode_t mode, struct nameidata *nd)
 {
 	int err = 0;
 	struct dentry *lower_dentry;
@@ -118,8 +118,8 @@ static int sdcardfs_link(struct dentry *old_dentry, struct inode *dir,
 		goto out;
 	fsstack_copy_attr_times(dir, lower_new_dentry->d_inode);
 	fsstack_copy_inode_size(dir, lower_new_dentry->d_inode);
-	old_dentry->d_inode->i_nlink =
-		sdcardfs_lower_inode(old_dentry->d_inode)->i_nlink;
+	set_nlink(old_dentry->d_inode,
+		  sdcardfs_lower_inode(old_dentry->d_inode)->i_nlink);
 	i_size_write(new_dentry->d_inode, file_size_save);
 out:
 	mnt_drop_write(lower_new_path.mnt);
@@ -165,8 +165,8 @@ static int sdcardfs_unlink(struct inode *dir, struct dentry *dentry)
 		goto out;
 	fsstack_copy_attr_times(dir, lower_dir_inode);
 	fsstack_copy_inode_size(dir, lower_dir_inode);
-	dentry->d_inode->i_nlink =
-		sdcardfs_lower_inode(dentry->d_inode)->i_nlink;
+	set_nlink(dentry->d_inode,
+		  sdcardfs_lower_inode(dentry->d_inode)->i_nlink);
 	dentry->d_inode->i_ctime = dir->i_ctime;
 	d_drop(dentry); /* this is needed, else LTP fails (VFS won't do it) */
 out:
@@ -216,7 +216,7 @@ out_unlock:
 }
 #endif
 
-static int sdcardfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
+static int sdcardfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	int err = 0;
 	struct dentry *lower_dentry;
@@ -255,7 +255,7 @@ static int sdcardfs_mkdir(struct inode *dir, struct dentry *dentry, int mode)
 	fsstack_copy_attr_times(dir, sdcardfs_lower_inode(dir));
 	fsstack_copy_inode_size(dir, lower_parent_dentry->d_inode);
 	/* update number of links on parent directory */
-	dir->i_nlink = sdcardfs_lower_inode(dir)->i_nlink;
+	set_nlink(dir, sdcardfs_lower_inode(dir)->i_nlink);
 
 out:
 	mnt_drop_write(lower_path.mnt);
@@ -291,7 +291,7 @@ static int sdcardfs_rmdir(struct inode *dir, struct dentry *dentry)
 		clear_nlink(dentry->d_inode);
 	fsstack_copy_attr_times(dir, lower_dir_dentry->d_inode);
 	fsstack_copy_inode_size(dir, lower_dir_dentry->d_inode);
-	dir->i_nlink = lower_dir_dentry->d_inode->i_nlink;
+	set_nlink(dir, lower_dir_dentry->d_inode->i_nlink);
 
 out:
 	mnt_drop_write(lower_path.mnt);
@@ -303,7 +303,7 @@ out_unlock:
 }
 
 #if 0
-static int sdcardfs_mknod(struct inode *dir, struct dentry *dentry, int mode,
+static int sdcardfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode,
 			dev_t dev)
 {
 	int err = 0;
@@ -482,18 +482,15 @@ static void sdcardfs_put_link(struct dentry *dentry, struct nameidata *nd,
 }
 #endif
 
-static int sdcardfs_permission(struct inode *inode, int mask, unsigned int flags)
+static int sdcardfs_permission(struct inode *inode, int mask)
 {
 	int err;
 
-	if (flags & IPERM_FLAG_RCU)
-		return -ECHILD;
-	
 	/*
 	 * Permission check on sdcardfs inode.
 	 * Calling process should have AID_SDCARD_RW permission 
 	 */
-	err = generic_permission(inode, mask, 0, inode->i_op->check_acl);
+	err = generic_permission(inode, mask);
 
 	/* XXX 
 	 * Original sdcardfs code calls inode_permission(lower_inode,.. )

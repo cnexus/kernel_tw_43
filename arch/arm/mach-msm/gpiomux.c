@@ -40,7 +40,7 @@ static unsigned msm_gpiomux_ngpio;
 /****************************************************************/
 /* Define value in accordance with
 	the specification of each BB vendor. */
-#define AP_GPIO_COUNT	150
+#define AP_GPIO_COUNT	90
 /****************************************************************/
 
 enum {
@@ -269,7 +269,6 @@ static const char * const gpiomux_val_str[] = {
 	"VAL_HIGH",
 };
 
-
 void msm_gpio_print_enabled(void)
 {
 	unsigned long flags;
@@ -362,4 +361,3 @@ static int __init secgpio_dvs_device_init(void)
 }
 arch_initcall(secgpio_dvs_device_init);
 #endif
-

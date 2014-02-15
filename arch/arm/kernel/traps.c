@@ -26,14 +26,14 @@
 #include <linux/init.h>
 #include <linux/sched.h>
 
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <asm/cacheflush.h>
 #include <asm/exception.h>
-#include <asm/system.h>
 #include <asm/unistd.h>
 #include <asm/traps.h>
 #include <asm/unwind.h>
 #include <asm/tls.h>
+#include <asm/system_misc.h>
 
 #include "signal.h"
 #ifdef CONFIG_SEC_DEBUG
@@ -42,6 +42,10 @@
 
 static const char *handler[]= { "prefetch abort", "data abort", "address exception", "interrupt" };
 
+#ifdef CONFIG_LGE_CRASH_HANDLER
+static int first_call_chain = 0;
+static int first_die = 1;
+#endif
 void *vectors_page;
 
 #ifdef CONFIG_DEBUG_USER
@@ -60,7 +64,14 @@ static void dump_mem(const char *, const char *, unsigned long, unsigned long);
 void dump_backtrace_entry(unsigned long where, unsigned long from, unsigned long frame)
 {
 #ifdef CONFIG_KALLSYMS
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	if (first_call_chain)
+		set_crash_store_enable();
+#endif
 	printk("[<%08lx>] (%pS) from [<%08lx>] (%pS)\n", where, (void *)where, from, (void *)from);
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	set_crash_store_disable();
+#endif
 #else
 	printk("Function entered at [<%08lx>] from [<%08lx>]\n", where, from);
 #endif
@@ -230,6 +241,11 @@ void show_stack(struct task_struct *tsk, unsigned long *sp)
 #else
 #define S_SMP ""
 #endif
+#ifdef CONFIG_THUMB2_KERNEL
+#define S_ISA " THUMB2"
+#else
+#define S_ISA " ARM"
+#endif
 
 static int __die(const char *str, int err, struct thread_info *thread, struct pt_regs *regs)
 {
@@ -237,8 +253,21 @@ static int __die(const char *str, int err, struct thread_info *thread, struct pt
 	static int die_counter;
 	int ret;
 
-	printk(KERN_EMERG "Internal error: %s: %x [#%d]" S_PREEMPT S_SMP "\n",
-	       str, err, ++die_counter);
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	if (first_die) {
+		first_call_chain = 1;
+		first_die = 0;
+	}
+	set_kernel_crash_magic_number();
+	set_crash_store_enable();
+#endif
+
+	printk(KERN_EMERG "Internal error: %s: %x [#%d]" S_PREEMPT S_SMP
+	       S_ISA "\n", str, err, ++die_counter);
+
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	set_crash_store_disable();
+#endif
 
 	/* trap and error numbers are mostly meaningless on ARM */
 	ret = notify_die(DIE_OOPS, str, regs, err, tsk->thread.trap_no, SIGSEGV);
@@ -255,6 +284,9 @@ static int __die(const char *str, int err, struct thread_info *thread, struct pt
 			 THREAD_SIZE + (unsigned long)task_stack_page(tsk));
 		dump_backtrace(regs, tsk);
 		dump_instr(KERN_EMERG, regs);
+#ifdef CONFIG_LGE_CRASH_HANDLER
+		first_call_chain = 0;
+#endif
 	}
 
 	return ret;
@@ -386,9 +418,24 @@ asmlinkage void __exception do_undefinstr(struct pt_regs *regs)
 	pc = (void __user *)instruction_pointer(regs);
 
 	if (processor_mode(regs) == SVC_MODE) {
-		instr = *(u32 *) pc;
+#ifdef CONFIG_THUMB2_KERNEL
+		if (thumb_mode(regs)) {
+			instr = ((u16 *)pc)[0];
+			if (is_wide_instruction(instr)) {
+				instr <<= 16;
+				instr |= ((u16 *)pc)[1];
+			}
+		} else
+#endif
+			instr = *(u32 *) pc;
 	} else if (thumb_mode(regs)) {
 		get_user(instr, (u16 __user *)pc);
+		if (is_wide_instruction(instr)) {
+			unsigned int instr2;
+			get_user(instr2, (u16 __user *)pc+1);
+			instr <<= 16;
+			instr |= instr2;
+		}
 	} else {
 		get_user(instr, (u32 __user *)pc);
 	}
@@ -484,10 +531,6 @@ do_cache_op(unsigned long start, unsigned long end, int flags)
 
 		up_read(&mm->mmap_sem);
 		flush_cache_user_range(start, end);
-
-#ifdef CONFIG_ARCH_MSM7X27
-		mb();
-#endif
 		return;
 	}
 	up_read(&mm->mmap_sem);
@@ -781,17 +824,15 @@ static void __init kuser_get_tls_init(unsigned long vectors)
 		memcpy((void *)vectors + 0xfe0, (void *)vectors + 0xfe8, 4);
 }
 
-void __init early_trap_init(void)
+void __init early_trap_init(void *vectors_base)
 {
-#if defined(CONFIG_CPU_USE_DOMAINS)
-	unsigned long vectors = CONFIG_VECTORS_BASE;
-#else
-	unsigned long vectors = (unsigned long)vectors_page;
-#endif
+	unsigned long vectors = (unsigned long)vectors_base;
 	extern char __stubs_start[], __stubs_end[];
 	extern char __vectors_start[], __vectors_end[];
 	extern char __kuser_helper_start[], __kuser_helper_end[];
 	int kuser_sz = __kuser_helper_end - __kuser_helper_start;
+
+	vectors_page = vectors_base;
 
 	/*
 	 * Copy the vectors, stubs and kuser helpers (in entry-armv.S)

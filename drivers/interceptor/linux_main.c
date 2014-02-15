@@ -192,16 +192,9 @@ ssh_interceptor_stop(SshInterceptor interceptor)
      installed. */
 
   /* Set packet_callback to point to our dummy_db */
-
-#if 0 /* changed to avoid compiler never-be-NULL warning */
   rcu_assign_pointer(interceptor->packet_callback,
 		     ssh_interceptor_dummy_packet_cb);
-#else
-  smp_wmb();
-  interceptor->packet_callback = (typeof(*ssh_interceptor_dummy_packet_cb)
-		  __force __rcu *)(ssh_interceptor_dummy_packet_cb);
-#endif
-
+  
   /* Wait for state synchronization. */
   local_bh_enable();
   synchronize_rcu();

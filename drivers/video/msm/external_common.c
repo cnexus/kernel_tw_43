@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,6 +14,8 @@
 #include <linux/types.h>
 #include <linux/bitops.h>
 #include <linux/mutex.h>
+#include <linux/slimport.h>
+#include <linux/fb.h>
 
 /* #define DEBUG */
 #define DEV_DBG_PREFIX "EXT_COMMON: "
@@ -25,7 +27,7 @@
 #include "hdmi_msm.h"
 #include "external_common.h"
 #include "mhl_api.h"
-
+#include "mhl_v2/sii8240_driver.h"
 #include "mdp.h"
 
 struct external_common_state_type *external_common_state;
@@ -33,6 +35,7 @@ EXPORT_SYMBOL(external_common_state);
 DEFINE_MUTEX(external_common_state_hpd_mutex);
 EXPORT_SYMBOL(external_common_state_hpd_mutex);
 
+int hdmi_forced_resolution = -1;
 
 static int atoi(const char *name)
 {
@@ -79,7 +82,6 @@ const char edid_blk1[0x100] = {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xDF};
 #endif /* DEBUG_EDID */
 
-#ifdef CONFIG_FB_MSM_HDMI_MHL
 #define DMA_E_BASE 0xB0000
 void mdp_vid_quant_set(void)
 {
@@ -96,15 +98,6 @@ void mdp_vid_quant_set(void)
 		MDP_OUTP(MDP_BASE + DMA_E_BASE + 0x78, 0x00FF0000);
 	}
 }
-#else
-void mdp_vid_quant_set(void)
-{
-	/*
-	 * Support for quantization to be added
-	 * only when MHL support is included.
-	 */
-}
-#endif
 
 const char *video_format_2string(uint32 format)
 {
@@ -261,7 +254,7 @@ struct hdmi_disp_mode_timing_type
 	hdmi_mhl_supported_video_mode_lut[HDMI_VFRMT_MAX] = {
 	HDMI_SETTINGS_640x480p60_4_3,
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_720x480p60_4_3),
-	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_720x480p60_16_9),
+	HDMI_SETTINGS_720x480p60_16_9,
 	HDMI_SETTINGS_1280x720p60_16_9,
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1920x1080i60_16_9),
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1440x480i60_4_3),
@@ -276,7 +269,7 @@ struct hdmi_disp_mode_timing_type
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1440x480p60_16_9),
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1920x1080p60_16_9),
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_720x576p50_4_3),
-	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_720x576p50_16_9),
+	HDMI_SETTINGS_720x576p50_16_9,
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1280x720p50_16_9),
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1920x1080i50_16_9),
 	VFRMT_NOT_SUPPORTED(HDMI_VFRMT_1440x576i50_4_3),
@@ -344,6 +337,9 @@ static ssize_t hdmi_common_rda_edid_modes(struct device *dev,
 		ret += snprintf(buf+ret, PAGE_SIZE-ret, "%d",
 			external_common_state->video_resolution+1);
 
+	if (hdmi_forced_resolution >= 0)
+		ret = snprintf(buf, PAGE_SIZE, "%d", hdmi_forced_resolution+1);
+
 	DEV_DBG("%s: '%s'\n", __func__, buf);
 	ret += snprintf(buf+ret, PAGE_SIZE-ret, "\n");
 	return ret;
@@ -377,11 +373,9 @@ static ssize_t hdmi_common_wta_vendor_name(struct device *dev,
 {
 	uint8 *s = (uint8 *) buf;
 	uint8 *d = external_common_state->spd_vendor_name;
-	ssize_t sz;
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
 	ret = (ret > 8) ? 8 : ret;
 
-	sz = sizeof(external_common_state->spd_vendor_name);
 	memset(external_common_state->spd_vendor_name, 0, 8);
 	while (*s) {
 		if (*s & 0x60 && *s ^ 0x7f) {
@@ -396,7 +390,6 @@ static ssize_t hdmi_common_wta_vendor_name(struct device *dev,
 
 		d++;
 	}
-	external_common_state->spd_vendor_name[sz - 1] = 0;
 
 	DEV_DBG("%s: '%s'\n", __func__,
 			external_common_state->spd_vendor_name);
@@ -421,10 +414,8 @@ static ssize_t hdmi_common_wta_product_description(struct device *dev,
 	uint8 *s = (uint8 *) buf;
 	uint8 *d = external_common_state->spd_product_description;
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
-	ssize_t sz;
 	ret = (ret > 16) ? 16 : ret;
 
-	sz = sizeof(external_common_state->spd_product_description);
 	memset(external_common_state->spd_product_description, 0, 16);
 	while (*s) {
 		if (*s & 0x60 && *s ^ 0x7f) {
@@ -439,8 +430,6 @@ static ssize_t hdmi_common_wta_product_description(struct device *dev,
 
 		d++;
 	}
-
-	external_common_state->spd_product_description[sz - 1] = 0;
 
 	DEV_DBG("%s: '%s'\n", __func__,
 			external_common_state->spd_product_description);
@@ -900,7 +889,46 @@ static ssize_t hdmi_common_rda_spkr_alloc_data_block(struct device *dev,
 	return ret;
 }
 
-static DEVICE_ATTR(video_mode, S_IRUGO | S_IWUSR | S_IWGRP,
+static ssize_t external_common_vscr_info_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct msm_fb_data_type *mfd = external_common_state->mfd;
+	struct fb_info *fbi = mfd->fbi;
+	struct fb_var_screeninfo *var=&fbi->var;
+
+	memcpy((struct fb_var_screeninfo*)buf, var, sizeof(struct fb_var_screeninfo));
+
+	DEV_DBG("%s: <ID=%d %dx%d (%d,%d,%d), (%d,%d,%d) %dMHz>\n", __func__,
+		var->reserved[3] >> 16, var->xres, var->yres,
+		var->right_margin, var->hsync_len, var->left_margin,
+		var->lower_margin, var->vsync_len, var->upper_margin,
+		var->pixclock/1000/1000);
+
+	return sizeof(struct fb_var_screeninfo);
+}
+
+static ssize_t external_common_vscr_info_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct msm_fb_data_type *mfd = external_common_state->mfd;
+	struct fb_info *fbi = mfd->fbi;
+	struct fb_var_screeninfo *var=&fbi->var;
+
+	memcpy(var, (struct fb_var_screeninfo*)buf, sizeof(struct fb_var_screeninfo));
+
+	DEV_DBG("%s: <ID=%d %dx%d (%d,%d,%d), (%d,%d,%d) %dMHz>\n", __func__,
+		var->reserved[3] >> 16, var->xres, var->yres,
+		var->right_margin, var->hsync_len, var->left_margin,
+		var->lower_margin, var->vsync_len, var->upper_margin,
+		var->pixclock/1000/1000);
+
+	return sizeof(struct fb_var_screeninfo);
+}
+
+static DEVICE_ATTR(vscr_info, S_IRUGO | S_IWUSR | S_IWGRP,
+	external_common_vscr_info_show, external_common_vscr_info_store);
+
+static DEVICE_ATTR(video_mode, S_IRUGO | S_IWUGO,
 	external_common_rda_video_mode, external_common_wta_video_mode);
 static DEVICE_ATTR(video_mode_str, S_IRUGO, external_common_rda_video_mode_str,
 	NULL);
@@ -908,7 +936,7 @@ static DEVICE_ATTR(connected, S_IRUGO, external_common_rda_connected, NULL);
 static DEVICE_ATTR(hdmi_mode, S_IRUGO, external_common_rda_hdmi_mode, NULL);
 #ifdef CONFIG_FB_MSM_HDMI_COMMON
 static DEVICE_ATTR(edid_modes, S_IRUGO, hdmi_common_rda_edid_modes, NULL);
-static DEVICE_ATTR(hpd, S_IRUGO | S_IWUSR | S_IWGRP, hdmi_common_rda_hpd,
+static DEVICE_ATTR(hpd, S_IRUGO | S_IWUGO, hdmi_common_rda_hpd,
 	hdmi_common_wta_hpd);
 static DEVICE_ATTR(hdcp, S_IRUGO, hdmi_common_rda_hdcp, NULL);
 static DEVICE_ATTR(pa, S_IRUGO,
@@ -926,8 +954,8 @@ static DEVICE_ATTR(3d_present, S_IRUGO, hdmi_common_rda_3d_present, NULL);
 static DEVICE_ATTR(hdcp_present, S_IRUGO, hdmi_common_rda_hdcp_present, NULL);
 #endif
 #ifdef CONFIG_FB_MSM_HDMI_3D
-static DEVICE_ATTR(format_3d, S_IRUGO | S_IWUSR | S_IWGRP,
-	hdmi_3d_rda_format_3d, hdmi_3d_wta_format_3d);
+static DEVICE_ATTR(format_3d, S_IRUGO | S_IWUGO, hdmi_3d_rda_format_3d,
+	hdmi_3d_wta_format_3d);
 #endif
 static DEVICE_ATTR(hdmi_primary, S_IRUGO, hdmi_common_rda_hdmi_primary, NULL);
 static DEVICE_ATTR(audio_data_block, S_IRUGO, hdmi_common_rda_audio_data_block,
@@ -936,6 +964,7 @@ static DEVICE_ATTR(spkr_alloc_data_block, S_IRUGO,
 	hdmi_common_rda_spkr_alloc_data_block, NULL);
 
 static struct attribute *external_common_fs_attrs[] = {
+	&dev_attr_vscr_info.attr,
 	&dev_attr_video_mode.attr,
 	&dev_attr_video_mode_str.attr,
 	&dev_attr_connected.attr,
@@ -994,6 +1023,9 @@ int external_common_state_create(struct platform_device *pdev)
 			rc);
 		return rc;
 	}
+	external_common_state->mfd = mfd;
+	DEV_DBG("%s: sysfs group %p\n", __func__,
+		external_common_state->mfd);
 	external_common_state->uevent_kobj = &mfd->fbi->dev->kobj;
 	DEV_ERR("%s: sysfs group %p\n", __func__,
 		external_common_state->uevent_kobj);
@@ -1283,27 +1315,23 @@ static void hdmi_edid_extract_speaker_allocation_data(const uint8 *in_buf)
 {
 	uint8 len;
 	uint16 speaker_allocation = 0;
-	const uint8 *sadb = hdmi_edid_find_block(in_buf, DBC_START_OFFSET, 4,
+	const uint8 *sad = hdmi_edid_find_block(in_buf, DBC_START_OFFSET, 4,
 			&len);
 
-	if (sadb == NULL)
+	if (sad == NULL)
 		return;
 
-	if (len != MAX_SPKR_ALLOC_DATA_BLOCK_SIZE)
-		return;
-
-	memcpy(external_common_state->spkr_alloc_data_block, sadb + 1, len);
-	speaker_allocation |= (sadb[1] & 0x7F);
+	external_common_state->speaker_allocation_block = sad[1];
+	speaker_allocation |= (sad[1] & 0x7F);
 	DEV_DBG("EDID: speaker allocation data SP byte = %08x %s%s%s%s%s%s%s\n",
-		sadb[1],
-		(sadb[1] & BIT(0)) ? "FL/FR," : "",
-		(sadb[1] & BIT(1)) ? "LFE," : "",
-		(sadb[1] & BIT(2)) ? "FC," : "",
-		(sadb[1] & BIT(3)) ? "RL/RR," : "",
-		(sadb[1] & BIT(4)) ? "RC," : "",
-		(sadb[1] & BIT(5)) ? "FLC/FRC," : "",
-		(sadb[1] & BIT(6)) ? "RLC/RRC," : "");
-
+		sad[1],
+		(sad[1] & BIT(0)) ? "FL/FR," : "",
+		(sad[1] & BIT(1)) ? "LFE," : "",
+		(sad[1] & BIT(2)) ? "FC," : "",
+		(sad[1] & BIT(3)) ? "RL/RR," : "",
+		(sad[1] & BIT(4)) ? "RC," : "",
+		(sad[1] & BIT(5)) ? "FLC/FRC," : "",
+		(sad[1] & BIT(6)) ? "RLC/RRC," : "");
 	external_common_state->audio_speaker_data |= (speaker_allocation << 8);
 }
 
@@ -1320,23 +1348,16 @@ static void hdmi_edid_extract_audio_data_blocks(const uint8 *in_buf)
 		audio_ch |= 0x02;
 	}
 
-	if (external_common_state->audio_data_block == NULL)
+	if (sad == NULL)
 		return;
-
-	if (len > MAX_AUDIO_DATA_BLOCK_SIZE)
-		return;
-
-	memcpy(external_common_state->audio_data_block, adb + 1, len);
 
 	external_common_state->audio_data_block_cnt = 0;
 	while (len >= 3 && external_common_state->audio_data_block_cnt < 16) {
 		DEV_DBG("EDID: Audio Data Block=<ch=%d, format=%d "
 			"sampling=0x%02x bit-depth=0x%02x>\n",
 			(sad[1] & 0x7)+1, sad[1] >> 3, sad[2], sad[3]);
-		/* only L-PCM format */
-		if (sad[1] >> 3 == 1) {
-			audio_ch |= (1 << (sad[1] & 0x7));
-			/* set 6th bit if max channel > 6*/
+		if ((sad[1] >> 3) == 0x01) {
+		audio_ch |= (1 << (sad[1] & 0x7));
 			if ((sad[1] & 0x7) > 5)
 				audio_ch |= 0x20;
 		}
@@ -1347,8 +1368,6 @@ static void hdmi_edid_extract_audio_data_blocks(const uint8 *in_buf)
 		sad += 3;
 	}
 	external_common_state->audio_speaker_data |= audio_ch;
-
-	external_common_state->adb_size = len;
 }
 
 static void hdmi_edid_extract_extended_data_blocks(const uint8 *in_buf)
@@ -1508,6 +1527,38 @@ static void hdmi_edid_detail_desc(const uint8 *data_buf, uint32 *disp_mode)
 		DEV_INFO("%s: *no mode* found\n", __func__);
 }
 
+static void limit_supported_video_format(uint32 *video_format)
+{
+	switch(sp_get_link_bw()){
+	case 0x0a:
+		if((*video_format == HDMI_VFRMT_1920x1080p60_16_9) ||
+			(*video_format == HDMI_VFRMT_2880x480p60_4_3)||
+			(*video_format == HDMI_VFRMT_2880x480p60_16_9) ||
+			(*video_format == HDMI_VFRMT_1280x720p120_16_9))
+
+			*video_format = HDMI_VFRMT_1280x720p60_16_9;
+		else if((*video_format == HDMI_VFRMT_1920x1080p50_16_9) ||
+			(*video_format == HDMI_VFRMT_2880x576p50_4_3)||
+			(*video_format == HDMI_VFRMT_2880x576p50_16_9) ||
+			(*video_format == HDMI_VFRMT_1280x720p100_16_9))
+
+			*video_format = HDMI_VFRMT_1280x720p50_16_9;
+		else if (*video_format == HDMI_VFRMT_1920x1080i100_16_9)
+			*video_format = HDMI_VFRMT_1920x1080i50_16_9;
+
+		else if (*video_format == HDMI_VFRMT_1920x1080i120_16_9)
+			*video_format = HDMI_VFRMT_1920x1080i60_16_9;
+		break;
+	case 0x06:
+		if(*video_format != HDMI_VFRMT_640x480p60_4_3)
+			*video_format = HDMI_VFRMT_640x480p60_4_3;
+		break;
+	case 0x14:
+	default:
+		break;
+	}
+}
+
 static void add_supported_video_format(
 	struct hdmi_disp_mode_list_type *disp_mode_list,
 	uint32 video_format)
@@ -1515,6 +1566,7 @@ static void add_supported_video_format(
 	const struct hdmi_disp_mode_timing_type *timing;
 	boolean supported = false;
 	boolean mhl_supported = true;
+	limit_supported_video_format(&video_format);
 
 	if (video_format >= HDMI_VFRMT_MAX)
 		return;
@@ -1525,7 +1577,7 @@ static void add_supported_video_format(
 		video_format, video_format_2string(video_format),
 		supported ? "Supported" : "Not-Supported");
 
-	if (mhl_is_connected()) {
+	if (mhl_is_connected() || (0x01 != sii8240_mhl_get_version())) {
 		const struct hdmi_disp_mode_timing_type *mhl_timing =
 			hdmi_mhl_get_supported_mode(video_format);
 		mhl_supported = mhl_timing != NULL;
@@ -1541,6 +1593,7 @@ static void add_supported_video_format(
 			DEV_DBG("%s: Default resolution %d [%s] supported\n",
 					__func__, video_format,
 					video_format_2string(video_format));
+			external_common_state->default_res_supported = true;
 		}
 	}
 }
@@ -1612,8 +1665,8 @@ static void hdmi_edid_get_display_vsd_3d_mode(const uint8 *data_buf,
 	uint32 num_og_cea_blocks)
 {
 	uint8 len, offset, present_multi_3d, hdmi_vic_len;
-	int hdmi_3d_len;
 	uint16 structure_all, structure_mask;
+	int hdmi_3d_len;
 	const uint8 *vsd = num_og_cea_blocks ?
 		hdmi_edid_find_block(data_buf+0x80, DBC_START_OFFSET,
 				3, &len) : NULL;
@@ -1905,6 +1958,7 @@ static void hdmi_edid_get_display_mode(const uint8 *data_buf,
 			HDMI_VFRMT_640x480p60_4_3);
 }
 
+#if  !defined(CONFIG_VIDEO_MHL_V2)
 static int hdmi_common_read_edid_block(int block, uint8 *edid_buf)
 {
 	uint32 ndx, check_sum, print_len;
@@ -1958,6 +2012,7 @@ static boolean check_edid_header(const uint8 *edid_buf)
 		&& (edid_buf[4] == 0xff) && (edid_buf[5] == 0xff)
 		&& (edid_buf[6] == 0xff) && (edid_buf[7] == 0x00);
 }
+#endif
 
 int hdmi_common_read_edid(void)
 {
@@ -1965,31 +2020,23 @@ int hdmi_common_read_edid(void)
 	uint32 cea_extension_ver = 0;
 	uint32 num_og_cea_blocks  = 0;
 	uint32 ieee_reg_id = 0;
-	uint32 i = 1;
 	char vendor_id[5];
 	/* EDID_BLOCK_SIZE[0x80] Each page size in the EDID ROM */
-	uint8 edid_buf[0x80 * 4];
+	const u8 edid_signature[] = {0x00, 0xff, 0xff, 0xff,
+				     0xff, 0xff, 0xff, 0x00};
+	const uint8 *edid_buf = sii8240_get_mhl_edid();
 
+	/* Default 2ch-audio */
+	external_common_state->audio_speaker_data = 0;
 	external_common_state->pt_scan_info = 0;
 	external_common_state->it_scan_info = 0;
 	external_common_state->ce_scan_info = 0;
 	external_common_state->preferred_video_format = 0;
-	/* audio_speaker_data reset */
-	external_common_state->audio_speaker_data = 0;
 	external_common_state->present_3d = 0;
 	memset(&external_common_state->disp_mode_list, 0,
 		sizeof(external_common_state->disp_mode_list));
-	memset(edid_buf, 0, sizeof(edid_buf));
-	memset(external_common_state->audio_data_block, 0,
-		sizeof(external_common_state->audio_data_block));
-	memset(external_common_state->spkr_alloc_data_block, 0,
-		sizeof(external_common_state->spkr_alloc_data_block));
-	external_common_state->adb_size = 0;
-	external_common_state->sadb_size = 0;
 
-	status = hdmi_common_read_edid_block(0, edid_buf);
-	if (status || !check_edid_header(edid_buf)) {
-		if (!status)
+	if (0 != memcmp(edid_signature, edid_buf, sizeof(edid_signature))) {
 			status = -EPROTO;
 		DEV_ERR("%s: edid read block(0) failed: %d "
 			"[%02x%02x%02x%02x%02x%02x%02x%02x]\n", __func__,
@@ -2013,12 +2060,6 @@ int hdmi_common_read_edid(void)
 			external_common_state->hdmi_sink ? "no" : "yes");
 		break;
 	case 1: /* Read block 1 */
-		status = hdmi_common_read_edid_block(1, &edid_buf[0x80]);
-		if (status) {
-			DEV_ERR("%s: ddc read block(1) failed: %d\n", __func__,
-				status);
-			goto error;
-		}
 		if (edid_buf[0x80] != 2)
 			num_og_cea_blocks = 0;
 		if (num_og_cea_blocks) {
@@ -2039,6 +2080,7 @@ int hdmi_common_read_edid(void)
 	case 2:
 	case 3:
 	case 4:
+#if  !defined(CONFIG_VIDEO_MHL_V2)
 		for (i = 1; i <= num_og_cea_blocks; i++) {
 			if (!(i % 2)) {
 					status = hdmi_common_read_edid_block(i,
@@ -2060,6 +2102,7 @@ int hdmi_common_read_edid(void)
 				}
 			}
 		}
+#endif
 		break;
 	default:
 		DEV_ERR("%s: ddc read failed, not supported multi-blocks: %d\n",
@@ -2091,21 +2134,24 @@ error:
 	external_common_state->disp_mode_list.num_of_elements = 1;
 	external_common_state->disp_mode_list.disp_mode_list[0] =
 		external_common_state->video_resolution;
+	external_common_state->default_res_supported = true;
 	return status;
 }
 EXPORT_SYMBOL(hdmi_common_read_edid);
 
 bool hdmi_common_get_video_format_from_drv_data(struct msm_fb_data_type *mfd)
 {
-	uint32 format =  external_common_state->video_resolution;
+	uint32 format = HDMI_VFRMT_1920x1080p60_16_9;
 	struct fb_var_screeninfo *var = &mfd->fbi->var;
 	bool changed = TRUE;
 	uint32_t userformat = 0;
 	userformat = var->reserved[3] >> 16;
 
-	if ((userformat > 0) && (userformat <= HDMI_VFRMT_MAX)) {
+	if (userformat) {
 		format = userformat-1;
 		DEV_DBG("reserved format is %d\n", format);
+	} else if (hdmi_prim_resolution) {
+		format = hdmi_prim_resolution - 1;
 	} else {
 		DEV_DBG("detecting resolution from %dx%d use top 2 bytes of"
 			" var->reserved[3] to specify mode", mfd->var_xres,
@@ -2121,15 +2167,33 @@ bool hdmi_common_get_video_format_from_drv_data(struct msm_fb_data_type *mfd)
 				: HDMI_VFRMT_720x576p50_16_9;
 			break;
 		case 1280:
-			format = HDMI_VFRMT_1280x720p60_16_9;
+			if (mfd->var_frame_rate == 50000)
+				format = HDMI_VFRMT_1280x720p50_16_9;
+			else
+				format = HDMI_VFRMT_1280x720p60_16_9;
 			break;
 		case 1440:
-			format = (mfd->var_yres == 480)
+			format = (mfd->var_yres == 240) /* interlaced has half
+							   of y res.
+							*/
 				? HDMI_VFRMT_1440x480i60_16_9
 				: HDMI_VFRMT_1440x576i50_16_9;
 			break;
 		case 1920:
-			format = HDMI_VFRMT_1920x1080p60_16_9;
+			if (mfd->var_yres == 540) {/* interlaced */
+				format = HDMI_VFRMT_1920x1080i60_16_9;
+			} else if (mfd->var_yres == 1080) {
+				if (mfd->var_frame_rate == 50000)
+					format = HDMI_VFRMT_1920x1080p50_16_9;
+				else if (mfd->var_frame_rate == 24000)
+					format = HDMI_VFRMT_1920x1080p24_16_9;
+				else if (mfd->var_frame_rate == 25000)
+					format = HDMI_VFRMT_1920x1080p25_16_9;
+				else if (mfd->var_frame_rate == 30000)
+					format = HDMI_VFRMT_1920x1080p30_16_9;
+				else
+					format = HDMI_VFRMT_1920x1080p60_16_9;
+			}
 			break;
 		}
 	}

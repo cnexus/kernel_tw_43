@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: linuxver.h 426186 2013-09-27 00:32:13Z $
+ * $Id: linuxver.h 416251 2013-08-02 10:57:29Z $
  */
 
 #ifndef _linuxver_h_
@@ -486,7 +486,7 @@ pci_restore_state(struct pci_dev *dev, u32 *buffer)
 
 typedef struct {
 	void 	*parent;  
-	char	*proc_name;
+	char 	*proc_name;
 	struct	task_struct *p_task;
 	long 	thr_pid;
 	int 	prio; 
@@ -522,7 +522,7 @@ static inline bool binary_sema_down(tsk_ctl_t *tsk)
 		return TRUE;
 }
 
-static inline bool binary_sema_up(tsk_ctl_t *tsk)
+static inline bool  binary_sema_up(tsk_ctl_t *tsk)
 {
 	bool sem_up = FALSE;
 	unsigned long flags = 0;

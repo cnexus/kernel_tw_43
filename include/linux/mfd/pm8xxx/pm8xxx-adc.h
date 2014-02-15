@@ -51,6 +51,10 @@ enum pm8xxx_adc_channels {
 	CHANNEL_MPP_1,
 	CHANNEL_MPP_2,
 	CHANNEL_BATT_THERM,
+	/* PM8018 ADC Arbiter uses a single channel on AMUX8
+	 * to read either Batt_id or Batt_therm.
+	 */
+	CHANNEL_BATT_ID_THERM = CHANNEL_BATT_THERM,
 	CHANNEL_BATT_ID,
 	CHANNEL_USBIN,
 	CHANNEL_DIE_TEMP,
@@ -91,10 +95,7 @@ enum pm8xxx_adc_channels {
 	ADC_MPP_2_ATEST_5,
 	ADC_MPP_2_ATEST_6,
 	ADC_MPP_2_ATEST_7,
-#ifdef CONFIG_SAMSUNG_JACK
 	ADC_MPP_1_AMUX6_SCALE_DEFAULT,
-#endif
-	ADC_MPP_2_CHANNEL_NONE,
 	ADC_CHANNEL_MAX_NUM,
 };
 
@@ -104,17 +105,13 @@ enum pm8xxx_adc_channels {
 #define PM8XXX_CHANNEL_MPP_SCALE1_IDX	20
 #define PM8XXX_CHANNEL_MPP_SCALE3_IDX	40
 
+#define PM8XXX_AMUX_MPP_1	0x1
 #define PM8XXX_AMUX_MPP_3	0x3
 #define PM8XXX_AMUX_MPP_4	0x4
 #define PM8XXX_AMUX_MPP_5	0x5
 #define PM8XXX_AMUX_MPP_6	0x6
 #define PM8XXX_AMUX_MPP_7	0x7
 #define PM8XXX_AMUX_MPP_8	0x8
-#define PM8XXX_AMUX_MPP_9	0x9
-#define PM8XXX_AMUX_MPP_10	0xa
-#define PM8XXX_AMUX_MPP_11	0xb
-#define PM8XXX_AMUX_MPP_12	0xc
-
 
 #define PM8XXX_ADC_DEV_NAME	"pm8xxx-adc"
 
@@ -251,6 +248,16 @@ struct pm8xxx_adc_linear_graph {
 struct pm8xxx_adc_map_pt {
 	int32_t x;
 	int32_t y;
+};
+
+/**
+ * struct pm8xxx_adc_map - container of pm8xxx_adc_map_pt
+ * @pt: pointer of pm8xxx_adc_map_pt
+ * @size: size of pm8xxx_adc_map_pt
+ */
+struct pm8xxx_adc_map {
+	struct pm8xxx_adc_map_pt *pt;
+	int size;
 };
 
 /**
@@ -407,14 +414,14 @@ int32_t pm8xxx_adc_scale_batt_id(int32_t adc_code,
 			struct pm8xxx_adc_chan_result *chan_rslt);
 /**
  * pm8xxx_adc_sec_board_therm_default() - Scales the pre-calibrated digital output
- *		of an ADC to the ADC reference and compensates for the
- *		gain and offset.
- * @adc_code:	pre-calibrated digital ouput of the ADC.
- * @adc_prop:	adc properties of the pm8xxx adc such as bit resolution,
- *		reference voltage.
- * @chan_prop:	individual channel properties to compensate the i/p scaling,
- *		slope and offset.
- * @chan_rslt:	physical result to be stored.
+ *              of an ADC to the ADC reference and compensates for the
+ *              gain and offset.
+ * @adc_code:   pre-calibrated digital ouput of the ADC.
+ * @adc_prop:   adc properties of the pm8xxx adc such as bit resolution,
+ *              reference voltage.
+ * @chan_prop:  individual channel properties to compensate the i/p scaling,
+ *              slope and offset.
+ * @chan_rslt:  physical result to be stored.
  */
 int32_t pm8xxx_adc_sec_board_therm_default(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
@@ -610,6 +617,21 @@ uint32_t pm8xxx_adc_btm_end(void);
  *			events are triggered.
  */
 uint32_t pm8xxx_adc_btm_configure(struct pm8xxx_adc_arb_btm_param *);
+
+/**
+ * pm8xxx_set_adcmap_btm_threshold()
+ */
+void pm8xxx_set_adcmap_btm_threshold(void *pts, int size);
+
+/**
+ * pm8xxx_set_adcmap_pa_therm()
+ */
+void pm8xxx_set_adcmap_pa_therm(void *pts, int size);
+
+/**
+ * pm8xxx_st_adcmap_ntcg_104ef_104fb()
+ */
+void pm8xxx_set_adcmap_ntcg_104ef_104fb(void *pts, int size);
 #else
 static inline uint32_t pm8xxx_adc_read(uint32_t channel,
 				struct pm8xxx_adc_chan_result *result)
@@ -625,8 +647,9 @@ static inline uint32_t pm8xxx_adc_btm_end(void)
 static inline uint32_t pm8xxx_adc_btm_configure(
 		struct pm8xxx_adc_arb_btm_param *param)
 { return -ENXIO; }
+static inline void pm8xxx_set_adcmap_btm_threshold(void) { }
+static inline void pm8xxx_set_adcmap_pa_therm(void) { }
+static inline void pm8xxx_set_adcmap_ntcg_104ef_104fb(void) { }
 #endif
-
-int pm8921_enable_batt_therm(u8 en);
 
 #endif /* PM8XXX_ADC_H */

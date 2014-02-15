@@ -30,12 +30,11 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/sync.h>
-#include <asm/current.h>
 
 static void sync_fence_signal_pt(struct sync_pt *pt);
 static int _sync_pt_has_signaled(struct sync_pt *pt);
 static void sync_fence_free(struct kref *kref);
-static void sync_dump(struct sync_fence *fence);
+static void sync_dump(void);
 
 static LIST_HEAD(sync_timeline_list_head);
 static DEFINE_SPINLOCK(sync_timeline_list_lock);
@@ -271,7 +270,7 @@ static struct sync_fence *sync_fence_alloc(const char *name)
 	INIT_LIST_HEAD(&fence->pt_list_head);
 	INIT_LIST_HEAD(&fence->waiter_list_head);
 	spin_lock_init(&fence->waiter_list_lock);
-	trace_sync_alloc(fence,current->pid);
+
 	init_waitqueue_head(&fence->wq);
 
 	spin_lock_irqsave(&sync_fence_list_lock, flags);
@@ -479,7 +478,7 @@ struct sync_fence *sync_fence_merge(const char *name,
 	sync_fence_signal_pt(list_first_entry(&fence->pt_list_head,
 					      struct sync_pt,
 					      pt_list));
- 
+
 	return fence;
 err:
 	sync_fence_free_pts(fence);
@@ -586,7 +585,7 @@ static bool sync_fence_check(struct sync_fence *fence)
 	smp_rmb();
 	return fence->status != 0;
 }
- 
+
 int sync_fence_wait(struct sync_fence *fence, long timeout)
 {
 	int err = 0;
@@ -612,16 +611,14 @@ int sync_fence_wait(struct sync_fence *fence, long timeout)
 
 	if (fence->status < 0) {
 		pr_info("fence error %d on [%p]\n", fence->status, fence);
-		sync_dump(fence);
+		sync_dump();
 		return fence->status;
 	}
 
 	if (fence->status == 0) {
-		if (timeout > 0) {
-			pr_info("fence timeout on [%p] after %dms\n", fence,
-				jiffies_to_msecs(timeout));
-			sync_dump(fence);
-		}
+		pr_info("fence timeout on [%p] after %dms\n", fence,
+			jiffies_to_msecs(timeout));
+		sync_dump();
 		return -ETIME;
 	}
 
@@ -632,8 +629,6 @@ EXPORT_SYMBOL(sync_fence_wait);
 static void sync_fence_free(struct kref *kref)
 {
 	struct sync_fence *fence = container_of(kref, struct sync_fence, kref);
-
-	trace_sync_free(fence, current->pid);
 
 	sync_fence_free_pts(fence);
 
@@ -776,8 +771,9 @@ static int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 	}
 
 	strlcpy(info->obj_name, pt->parent->name, sizeof(info->obj_name));
-	strlcpy(info->driver_name, pt->parent->ops->driver_name,
-		sizeof(info->driver_name));
+	if (pt->parent->ops->driver_name)
+		strlcpy(info->driver_name, pt->parent->ops->driver_name,
+			sizeof(info->driver_name));
 	info->status = pt->status;
 	info->timestamp_ns = ktime_to_ns(pt->timestamp);
 
@@ -1004,7 +1000,7 @@ late_initcall(sync_debugfs_init);
 
 #define DUMP_CHUNK 256
 static char sync_dump_buf[64 * 1024];
-static void sync_dump(struct sync_fence *fence)
+void sync_dump(void)
 {
        struct seq_file s = {
                .buf = sync_dump_buf,
@@ -1012,9 +1008,7 @@ static void sync_dump(struct sync_fence *fence)
        };
        int i;
 
-       seq_printf(&s, "fence:\n--------------\n");
-       sync_print_fence(&s, fence);
-       seq_printf(&s, "\n");
+       sync_debugfs_show(&s, NULL);
 
        for (i = 0; i < s.count; i += DUMP_CHUNK) {
                if ((s.count - i) > DUMP_CHUNK) {
@@ -1029,8 +1023,7 @@ static void sync_dump(struct sync_fence *fence)
        }
 }
 #else
-static void sync_dump(struct sync_fence *fence)
+static void sync_dump(void)
 {
 }
 #endif
-

@@ -1,5 +1,3 @@
-EXTRA_CFLAGS += -fno-pic
-
 obj-$(CONFIG_AUTHENTEC_VPNCLIENT_INTERCEPTOR) := vpnclient.o
 
 vpnclient-y := \

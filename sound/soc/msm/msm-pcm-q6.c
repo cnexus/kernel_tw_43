@@ -372,7 +372,7 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 									ret);
 		}
 	}
- 
+
 	prtd->dsp_cnt = 0;
 	runtime->private_data = prtd;
 
@@ -460,6 +460,9 @@ static int msm_pcm_playback_close(struct snd_pcm_substream *substream)
 	msm_pcm_routing_dereg_phy_stream(soc_prtd->dai_link->be_id,
 			SNDRV_PCM_STREAM_PLAYBACK);
 	q6asm_audio_client_free(prtd->audio_client);
+
+	prtd->audio_client = NULL; /* Samsung fix - prevent null pointer dereference */
+
 	kfree(prtd);
 	return 0;
 }
@@ -681,8 +684,8 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	if (ret < 0) {
-		pr_err("%s Audio Start: Buffer Allocation failed %d\n",
-			__func__, ret);
+		pr_err("Audio Start: Buffer Allocation failed \
+					rc = %d\n", ret);
 		return -ENOMEM;
 	}
 	buf = prtd->audio_client->port[dir].buf;
@@ -701,10 +704,8 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 	else
 		dma_buf->bytes = params_buffer_bytes(params);
 
-	if (!dma_buf->area) {
-		pr_err("%s DMA buf area avail failed\n", __func__);
+	if (!dma_buf->area)
 		return -ENOMEM;
-	}
 
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 	return 0;

@@ -9,10 +9,8 @@
 #include <linux/io.h>
 #include <linux/types.h>
 
-#define	DEBUG_LOG_START	(0x88700000)
-#define	SECURE_LOG_START	(0x88880000)
+#define	DEBUG_LOG_START	(0x88600000)
 #define	DEBUG_LOG_SIZE	(1<<20)
-#define	SEC_LOG_SIZE	(1<<19)
 #define	DEBUG_LOG_MAGIC	(0xaabbccdd)
 #define	DEBUG_LOG_ENTRY_SIZE	128
 typedef struct debug_log_entry_s
@@ -35,28 +33,16 @@ typedef struct debug_log_header_s
 #define DRIVER_DESC   "A kernel module to read tima debug log"
 
 unsigned long *tima_debug_log_addr = 0;
-unsigned long *tima_secure_log_addr = 0;
 
 /**
  *      tima_proc_show - Handler for writing TIMA Log into sequential Buffer
  */
-static int tima_proc_debug_show(struct seq_file *m, void *v)
+static int tima_proc_show(struct seq_file *m, void *v)
 {
 	/* Pass on the whole debug buffer to the user-space. User-space
 	 * will interpret it as it chooses to.
 	 */
 	seq_write(m, (const char *)tima_debug_log_addr, DEBUG_LOG_SIZE);
-
-	return 0;
-}
-
-static int tima_proc_secure_show(struct seq_file *m, void *v)
-{
-	/* Pass on the whole debug buffer to the user-space. User-space
-	 * will interpret it as it chooses to.
-	 */
-	seq_write(m, (const char *)tima_secure_log_addr, SEC_LOG_SIZE);
-
 	return 0;
 }
 
@@ -65,10 +51,7 @@ static int tima_proc_secure_show(struct seq_file *m, void *v)
  */
 static int tima_proc_open(struct inode *inode, struct file *filp)
 {
-	if (!strcmp(filp->f_path.dentry->d_iname, "tima_secure_log"))
-		return single_open(filp, tima_proc_secure_show, NULL);
-	else
-		return single_open(filp, tima_proc_debug_show, NULL);
+	return single_open(filp, tima_proc_show, NULL);
 }
 
 
@@ -90,30 +73,17 @@ static int __init tima_debug_log_read_init(void)
 		printk(KERN_ERR"tima_debug_log_read_init: Error creating proc entry\n");
 		goto error_return;
 	}
-
-        if (proc_create("tima_secure_log", 0644,NULL, &tima_proc_fops) == NULL) {
-		printk(KERN_ERR"tima_secure_log_read_init: Error creating proc entry\n");
-		goto remove_debug_entry;
-	}
         printk(KERN_INFO"tima_debug_log_read_init: Registering /proc/tima_debug_log Interface \n");
 
 	tima_debug_log_addr = (unsigned long *)ioremap(DEBUG_LOG_START, DEBUG_LOG_SIZE);
 	if (tima_debug_log_addr == NULL) {
-		printk(KERN_ERR"tima_debug_log_read_init: DEBUG LOG ioremap Failed\n");
-		goto ioremap_failed;
-	}
-	tima_secure_log_addr = (unsigned long *)ioremap(SECURE_LOG_START, SEC_LOG_SIZE);
-	if (tima_secure_log_addr == NULL) {
-		printk(KERN_ERR"tima_debug_log_read_init: SECURE LOG ioremap Failed\n");
+		printk(KERN_ERR"tima_debug_log_read_init: ioremap Failed\n");
 		goto ioremap_failed;
 	}
         return 0;
 
 ioremap_failed:
-	remove_proc_entry("tima_secure_log", NULL);
-remove_debug_entry:
-        remove_proc_entry("tima_debug_log", NULL);
-
+	remove_proc_entry("tima_debug_log", NULL);
 error_return:
 	return -1;
 }

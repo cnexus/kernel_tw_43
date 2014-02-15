@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -102,20 +102,15 @@ struct hdmi_msm_state_type {
 	struct clk *hdmi_app_clk;
 	struct clk *hdmi_m_pclk;
 	struct clk *hdmi_s_pclk;
-	boolean clk_status;
 	void __iomem *qfprom_io;
 	void __iomem *hdmi_io;
 
 	struct external_common_state_type common;
-	struct completion hpd_event_processed;
-	boolean hpd_on_offline;
-#if defined(CONFIG_VIDEO_MHL_V1) || defined(CONFIG_VIDEO_MHL_V2) || \
-		defined(CONFIG_VIDEO_MHL_TAB_V2)
-	boolean mhl_hpd_state;
-#endif
+	boolean is_mhl_enabled;
 	struct switch_dev	hdmi_audio_switch;
 	struct switch_dev	hdmi_audio_ch;
 	boolean	boot_completion;
+	boolean hpd_on_offline;
 };
 
 extern struct hdmi_msm_state_type *hdmi_msm_state;
@@ -133,4 +128,12 @@ void hdmi_frame_ctrl_cfg(const struct hdmi_disp_mode_timing_type *timing);
 void hdmi_msm_phy_status_poll(void);
 #endif
 
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL_CEC_SUPPORT
+void hdmi_msm_cec_init(void);
+void hdmi_msm_cec_write_logical_addr(int addr);
+void hdmi_msm_cec_msg_recv(void);
+void hdmi_msm_cec_one_touch_play(void);
+void hdmi_msm_cec_msg_send(struct hdmi_msm_cec_msg *msg);
+#endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL_CEC_SUPPORT */
+void mhl_connect_api(boolean on);
 #endif /* __HDMI_MSM_H__ */

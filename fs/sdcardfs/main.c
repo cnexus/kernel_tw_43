@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/parser.h>
+#include "../internal.h"
 
 enum {
 	Opt_uid, 
@@ -102,12 +103,9 @@ static struct dentry *sdcardfs_d_alloc_root(struct super_block *sb)
 			.len = 1
 		};
 
-		ret = d_alloc(NULL, &name);
-		if (ret) {
+		ret = __d_alloc(sb, &name);
+		if (ret)
 			d_set_d_op(ret, &sdcardfs_dops);
-			ret->d_sb = sb;
-			ret->d_parent = ret;
-		}
 	}
 	return ret;
 }

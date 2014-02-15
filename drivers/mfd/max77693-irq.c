@@ -69,9 +69,16 @@ static const struct max77693_irq_data max77693_irqs[] = {
 	DECLARE_IRQ(MAX77693_TOPSYS_IRQLOWSYS_INT,	TOPSYS_INT, 1 << 3),
 
 	DECLARE_IRQ(MAX77693_CHG_IRQ_BYP_I,	CHG_INT, 1 << 0),
+#if defined(CONFIG_CHARGER_MAX77803)
+	DECLARE_IRQ(MAX77693_CHG_IRQ_BATP_I,	CHG_INT, 1 << 2),
+#else
 	DECLARE_IRQ(MAX77693_CHG_IRQ_THM_I,	CHG_INT, 1 << 2),
+#endif
 	DECLARE_IRQ(MAX77693_CHG_IRQ_BAT_I,	CHG_INT, 1 << 3),
 	DECLARE_IRQ(MAX77693_CHG_IRQ_CHG_I,	CHG_INT, 1 << 4),
+#if defined(CONFIG_CHARGER_MAX77803)
+	DECLARE_IRQ(MAX77693_CHG_IRQ_WCIN_I,	CHG_INT, 1 << 5),
+#endif
 	DECLARE_IRQ(MAX77693_CHG_IRQ_CHGIN_I,	CHG_INT, 1 << 6),
 
 	DECLARE_IRQ(MAX77693_MUIC_IRQ_INT1_ADC,	MUIC_INT1, 1 << 0),
@@ -226,8 +233,10 @@ clear_retry:
 	pr_debug("%s: irq gpio post-state(0x%02x)\n", __func__,
 		gpio_get_value(max77693->irq_gpio));
 
-	if (gpio_get_value(max77693->irq_gpio) == 0)
+	if (gpio_get_value(max77693->irq_gpio) == 0) {
+		pr_warn("%s: irq_gpio is not High!\n", __func__);
 		goto clear_retry;
+	}
 
 	/* Apply masking */
 	for (i = 0; i < MAX77693_IRQ_GROUP_NR; i++) {

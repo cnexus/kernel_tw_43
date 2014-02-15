@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Customer HW 4 dependant file
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
@@ -29,22 +29,11 @@
 
 /* PROJECTS */
 
-#if defined(CONFIG_MACH_SAMSUNG_ESPRESSO) || defined(CONFIG_MACH_SAMSUNG_ESPRESSO_10)
+#if defined(CONFIG_MACH_SAMSUNG_ESPRESSO)\
+	|| defined(CONFIG_MACH_SAMSUNG_ESPRESSO_10)
 #define READ_MACADDR
 #define HW_OOB
 #endif /* CONFIG_MACH_SAMSUNG_ESPRESSO && CONFIG_MACH_SAMSUNG_ESPRESSO_10 */
-
-/* Mproject ATT QoS Test feature */
-#ifdef CONFIG_MACH_GC2PD
-#define GC2PD_QoS_TEST
-#endif /* CONFIG_MACH_Mproject ATT */
-
-/* GARDA COB */
-#ifdef CONFIG_MACH_GARDA
-#define READ_MACADDR
-#undef USE_CID_CHECK
-#undef HW_OOB
-#endif
 
 /* Q1 also uses this feature */
 #if defined(CONFIG_MACH_U1) || defined(CONFIG_MACH_TRATS)
@@ -61,10 +50,15 @@
 #endif /* CONFIG_ARCH_MSM7X30 */
 
 #if defined(CONFIG_MACH_GC1) || defined(CONFIG_MACH_U1_NA_SPR) || \
-	defined(CONFIG_MACH_KONA)
+	defined(CONFIG_MACH_VIENNAEUR) || defined(CONFIG_MACH_LT03EUR) || \
+	defined(CONFIG_MACH_LT03SKT) || defined(CONFIG_MACH_LT03KTT) || \
+	defined(CONFIG_MACH_LT03LGT)
 #undef USE_CID_CHECK
 #define READ_MACADDR
-#endif /* CONFIG_MACH_GC1 || CONFIG_MACH_U1_NA_SPR */
+#endif	/* CONFIG_MACH_GC1 || CONFIG_MACH_U1_NA_SPR || CONFIG_MACH_VIENNAEUR ||
+	 * CONFIG_MACH_LT03EUR || CONFIG_MACH_LT03SKT || CONFIG_MACH_LT03KTT ||
+	 * CONFIG_MACH_LT03LGT
+	 */
 
 #ifdef CONFIG_MACH_P10
 #define READ_MACADDR
@@ -75,17 +69,9 @@
 #define WIFI_TURNOFF_DELAY	200
 #endif /* CONFIG_ARCH_MSM8960 */
 
-#if defined(CONFIG_MACH_TAB3)
-#undef HW_OOB
-#undef USE_CID_CHECK
-#define READ_MACADDR
-#endif
-
-#if defined(CONFIG_TARGET_TAB3_3G8) || defined(CONFIG_TARGET_TAB3_LTE8)
-#undef READ_MACADDR
-#define USE_CID_CHECK
-#define GET_MAC_FROM_OTP
-#endif
+#if defined(CONFIG_BCM4335) || defined (CONFIG_BCM4335_MODULE)
+#define POWERUP_MAX_RETRY 5 /* Due to late start-up of FPGA in JF project */
+#endif /* CONFIG_BCM4335 || CONFIG_BCM4335_MODULE */
 
 /* REGION CODE */
 #ifndef CONFIG_WLAN_REGION_CODE
@@ -100,7 +86,7 @@
 #endif /* CONFIG_WLAN_REGION_CODE >= 100 && CONFIG_WLAN_REGION_CODE < 200 */
 
 #if (CONFIG_WLAN_REGION_CODE >= 200) && (CONFIG_WLAN_REGION_CODE < 300)     /* KOR */
-#undef USE_INITIAL_2G_SCAN_ORG
+#undef USE_INITIAL_2G_SCAN
 #ifndef ROAM_ENABLE
 #define ROAM_ENABLE
 #endif /* ROAM_ENABLE */
@@ -119,34 +105,53 @@
 #endif /* ROAM_AP_ENV_DETECTION */
 
 #undef WRITE_MACADDR
-#undef READ_MACADDR
-#ifdef CONFIG_BCM4334
+#ifndef READ_MACADDR
 #define READ_MACADDR
-#else
-#define RDWR_MACADDR
-#endif /* CONFIG_BCM4334 */
+#endif /* READ_MACADDR */
 
 #if (CONFIG_WLAN_REGION_CODE == 201)     /* SKT */
+
+#ifdef CONFIG_MACH_UNIVERSAL5410
+/* Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1 */
+#define FIX_CPU_MIN_CLOCK
+#endif /* CONFIG_MACH_UNIVERSAL5410 */
+
 #endif /* CONFIG_WLAN_REGION_CODE == 201 */
 
 #if (CONFIG_WLAN_REGION_CODE == 202)     /* KTT */
 #define VLAN_MODE_OFF
-#define CUSTOM_KEEP_ALIVE_SETTING	30000
+#define CUSTOM_KEEP_ALIVE_SETTING   30000 /* JBP type KOR KTT only. do not correct here */
 #define FULL_ROAMING_SCAN_PERIOD_60_SEC
+
+#ifdef CONFIG_MACH_UNIVERSAL5410
+/* Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1 */
+#define FIX_CPU_MIN_CLOCK
+#endif /* CONFIG_MACH_UNIVERSAL5410 */
+
 #endif /* CONFIG_WLAN_REGION_CODE == 202 */
 
 #if (CONFIG_WLAN_REGION_CODE == 203)     /* LGT */
+#ifdef CONFIG_MACH_UNIVERSAL5410
+/* Make CPU core clock 300MHz & assign dpc thread workqueue to CPU1 */
+#define FIX_CPU_MIN_CLOCK
+#define FIX_BUS_MIN_CLOCK
+#endif /* CONFIG_MACH_UNIVERSAL5410 */
 #endif /* CONFIG_WLAN_REGION_CODE == 203 */
 #endif /* CONFIG_WLAN_REGION_CODE >= 200 && CONFIG_WLAN_REGION_CODE < 300 */
 
 #if (CONFIG_WLAN_REGION_CODE >= 300) && (CONFIG_WLAN_REGION_CODE < 400)     /* CHN */
+#ifndef BCMWAPI_WPI
 #define BCMWAPI_WPI
+#endif
+#ifndef BCMWAPI_WAI
 #define BCMWAPI_WAI
+#endif
 #endif /* CONFIG_WLAN_REGION_CODE >= 300 && CONFIG_WLAN_REGION_CODE < 400 */
 
-#if !defined(READ_MACADDR) && !defined(WRITE_MACADDR) && !defined(RDWR_KORICS_MACADDR) \
-	&& !defined(RDWR_MACADDR)
+#if !defined(READ_MACADDR) && !defined(WRITE_MACADDR) \
+	&& !defined(RDWR_KORICS_MACADDR) && !defined(RDWR_MACADDR)
 #define GET_MAC_FROM_OTP
+#define SHOW_NVRAM_TYPE
 #endif /* !READ_MACADDR && !WRITE_MACADDR && !RDWR_KORICS_MACADDR && !RDWR_MACADDR */
 
 #endif /* _dhd_sec_feature_h_ */

@@ -19,18 +19,12 @@ struct rq_data {
 	unsigned long rq_poll_total_jiffies;
 	unsigned long def_timer_last_jiffy;
 	unsigned int def_interval;
-	unsigned int hotplug_disabled;
 	int64_t def_start_time;
 	struct attribute_group *attr_group;
 	struct kobject *kobj;
 	struct work_struct def_timer_work;
 	int init;
 };
-
-#ifdef CONFIG_SEC_DVFS_DUAL
-void dual_boost(unsigned int boost_on);
-int get_dual_boost_state(void);
-#endif
 
 extern spinlock_t rq_lock;
 extern struct rq_data rq_info;

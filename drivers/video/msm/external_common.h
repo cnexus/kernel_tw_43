@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -112,6 +112,8 @@
 #define HDMI_VFRMT_MAX			59
 #define HDMI_VFRMT_FORCE_32BIT		0x7FFFFFFF
 
+extern int ext_resolution;
+
 struct hdmi_disp_mode_timing_type {
 	uint32	video_format;
 	uint32	active_h;
@@ -155,7 +157,7 @@ struct hdmi_disp_mode_timing_type {
 	 240, 4, 3, 15, TRUE, 27000, 60000, TRUE, FALSE}
 #define HDMI_SETTINGS_1920x1080p60_16_9					\
 	{HDMI_VFRMT_1920x1080p60_16_9,   1920, 88,  44,  148,  FALSE,	\
-	 1080, 4, 5, 36, FALSE, 148500, 60000, FALSE, FALSE}
+	 1080, 4, 5, 36, FALSE, 148500, 60000, FALSE, TRUE}
 #define HDMI_SETTINGS_720x576p50_4_3					\
 	{HDMI_VFRMT_720x576p50_4_3,      720,  12,  64,  68,   TRUE,	\
 	 576,  5, 5, 39, TRUE, 27000, 50000, FALSE, TRUE}
@@ -173,7 +175,7 @@ struct hdmi_disp_mode_timing_type {
 	 288,  2, 3, 19, TRUE, 27000, 50000, TRUE, FALSE}
 #define HDMI_SETTINGS_1920x1080p50_16_9					\
 	{HDMI_VFRMT_1920x1080p50_16_9,   1920,  528,  44,  148,  FALSE,	\
-	 1080, 4, 5, 36, FALSE, 148500, 50000, FALSE, FALSE}
+	 1080, 4, 5, 36, FALSE, 148500, 50000, FALSE, TRUE}
 #define HDMI_SETTINGS_1920x1080p24_16_9					\
 	{HDMI_VFRMT_1920x1080p24_16_9,   1920,  638,  44,  148,  FALSE,	\
 	 1080, 4, 5, 36, FALSE, 74250, 24000, FALSE, TRUE}
@@ -214,9 +216,10 @@ struct hdmi_disp_mode_list_type {
 
 struct external_common_state_type {
 	boolean hpd_state;
-	boolean pre_suspend_hpd_state;
 	struct kobject *uevent_kobj;
+	struct msm_fb_data_type *mfd;
 	uint32 video_resolution;
+	boolean default_res_supported;
 	struct device *dev;
 	struct switch_dev sdev;
 	struct switch_dev audio_sdev;
@@ -229,6 +232,7 @@ struct external_common_state_type {
 	boolean hpd_feature_on;
 	boolean hdmi_sink;
 	struct hdmi_disp_mode_list_type disp_mode_list;
+	uint8 speaker_allocation_block;
 	uint16 video_latency, audio_latency;
 	uint8 audio_data_block_cnt;
 	uint16 physical_address;
@@ -236,19 +240,20 @@ struct external_common_state_type {
 	uint8 pt_scan_info;
 	uint8 it_scan_info;
 	uint8 ce_scan_info;
-	uint8 spd_vendor_name[9];
-	uint8 spd_product_description[17];
+	uint8 spd_vendor_name[8];
+	uint8 spd_product_description[16];
 	boolean present_3d;
 	boolean present_hdcp;
+	uint32 audio_data_blocks[16];
 	uint8 audio_data_block[MAX_AUDIO_DATA_BLOCK_SIZE];
 	int adb_size;
 	uint8 spkr_alloc_data_block[MAX_SPKR_ALLOC_DATA_BLOCK_SIZE];
 	int sadb_size;
-	uint32 audio_data_blocks[16];
 	int (*read_edid_block)(int block, uint8 *edid_buf);
 	int (*hpd_feature)(int on);
 #endif
 	uint16 audio_speaker_data;
+	boolean sii8240_connected;
 };
 
 /* The external interface driver needs to initialize the common state. */

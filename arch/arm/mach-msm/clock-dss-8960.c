@@ -90,7 +90,6 @@
 #define PLL_PWRDN_B BIT(3)
 #define PD_PLL BIT(1)
 
-static unsigned current_rate;
 static unsigned hdmi_pll_on;
 
 int hdmi_pll_enable(void)
@@ -176,6 +175,7 @@ int hdmi_pll_enable(void)
 			timeout_count = 1000;
 			pll_lock_retry--;
 		}
+		udelay(1);
 	}
 
 	if (!ahb_enabled)
@@ -217,11 +217,6 @@ void hdmi_pll_disable(void)
 	if (!ahb_enabled)
 		writel_relaxed(ahb_en_reg & ~BIT(4), AHB_EN_REG);
 	hdmi_pll_on = 0;
-}
-
-unsigned hdmi_pll_get_rate(void)
-{
-	return current_rate;
 }
 
 int hdmi_pll_set_rate(unsigned rate)
@@ -378,7 +373,6 @@ int hdmi_pll_set_rate(unsigned rate)
 	if (set_power_dwn)
 		hdmi_pll_enable();
 
-	current_rate = rate;
 	if (!ahb_enabled)
 		writel_relaxed(ahb_en_reg & ~BIT(4), AHB_EN_REG);
 
