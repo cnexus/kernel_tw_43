@@ -281,6 +281,21 @@ obj-$(CONFIG_MACH_MSM8960_FLUID) += board-8960-all.o board-8960-regulator.o
 obj-$(CONFIG_MACH_MSM8930_CDP) += board-8930-all.o board-8930-regulator-pm8038.o board-8930-regulator-pm8917.o
 obj-$(CONFIG_MACH_MSM8930_MTP) += board-8930-all.o board-8930-regulator-pm8038.o board-8930-regulator-pm8917.o
 obj-$(CONFIG_MACH_MSM8930_FLUID) += board-8930-all.o board-8930-regulator-pm8038.o board-8930-regulator-pm8917.o
+
+obj-$(CONFIG_MACH_M2_VZW) += board-m2_vzw.o board-m2_vzw-gpiomux.o
+obj-$(CONFIG_MACH_M2_SPR) += board-m2_spr.o board-m2_spr-gpiomux.o
+obj-$(CONFIG_MACH_M2_ATT) += board-m2_att.o board-m2_att-gpiomux.o
+obj-$(CONFIG_MACH_M2_SKT) += board-m2_skt.o board-m2_skt-gpiomux.o
+obj-$(CONFIG_MACH_M2_DCM) += board-m2_dcm.o board-m2_dcm-gpiomux.o
+ifdef CONFIG_BCM4334
+board-msm8960-common-all-objs += board-8960-wifi.o
+endif
+obj-$(CONFIG_MACH_M2_VZW) += board-msm8960-common-all.o board-mms-tsp.o
+obj-$(CONFIG_MACH_M2_SPR) += board-msm8960-common-all.o board-mms-tsp.o
+obj-$(CONFIG_MACH_M2_ATT) += board-msm8960-common-all.o board-mms-tsp.o
+obj-$(CONFIG_MACH_M2_SKT) += board-msm8960-common-all.o board-mms-tsp.o
+obj-$(CONFIG_MACH_M2_DCM) += board-msm8960-common-all.o board-mms-tsp.o
+
 obj-$(CONFIG_PM8921_BMS) += bms-batterydata.o bms-batterydata-desay.o
 obj-$(CONFIG_MACH_APQ8064_CDP) += board-8064-all.o board-8064-regulator.o
 obj-$(CONFIG_MACH_APQ8064_MTP) += board-8064-all.o board-8064-regulator.o
