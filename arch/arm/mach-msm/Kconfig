@@ -812,6 +812,48 @@ config MACH_MSM8960_FLUID
 	help
 	  Support for the Qualcomm MSM8960 FLUID device.
 
+config MACH_M2_VZW
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung M2_VZW"
+        help
+          Support for the Samsung M2 Verizon device.
+
+config MACH_M2_SPR
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung M2_SPR"
+        help
+          Support for the Samsung M2 Sprint device.
+
+config MACH_M2_ATT
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung M2_ATT"
+        help
+          Support for the Samsung M2 AT&T device.
+
+config MACH_M2_SKT
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung M2_SKT"
+        help
+          Support for the Samsung M2 SKT device.
+
+config MACH_M2_MTR
+        depends on ARCH_MSM8960
+        default n
+        bool "MSM8960 Samsung M2_MTR"
+        help
+          Support for the Samsung M2 Metro PCS device.
+
+config MACH_M2_DCM
+	depends on ARCH_MSM8960
+	default n
+	bool "MSM8960 Samsung M2_DCM"
+	help
+          Support for the Samsung M2 DCM device.
+
 config MACH_MSM8960_LIQUID
 	depends on ARCH_MSM8960
 	bool "MSM8960 LIQUID"
