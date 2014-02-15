@@ -6606,6 +6606,39 @@ static void __init reg_init(void)
 }
 
 struct clock_init_data msm8960_clock_init_data __initdata;
+
+static int get_mclk_rev(void)
+{
+#if defined(CONFIG_MACH_M2_ATT)
+        return ((system_rev >= BOARD_REV10) ? 1 : 0);
+#elif defined(CONFIG_MACH_M2_VZW)
+        return ((system_rev >= BOARD_REV13) ? 1 : 0);
+#elif defined(CONFIG_MACH_M2_SPR)
+        return ((system_rev >= BOARD_REV08) ? 1 : 0);
+#elif defined(CONFIG_MACH_M2_SKT)
+        return ((system_rev >= BOARD_REV09) ? 1 : 0);
+#elif defined(CONFIG_MACH_M2_DCM) || defined(CONFIG_MACH_K2_KDI)
+        return ((system_rev >= BOARD_REV03) ? 1 : 0);
+#elif defined(CONFIG_MACH_APEXQ)
+        return ((system_rev >= BOARD_REV04) ? 1 : 0);
+#elif defined(CONFIG_MACH_COMANCHE)
+        return ((system_rev >= BOARD_REV03) ? 1 : 0);
+#elif defined(CONFIG_MACH_AEGIS2)
+        return ((system_rev >= BOARD_REV07) ? 1 : 0);
+#elif defined(CONFIG_MACH_EXPRESS)
+        return ((system_rev >= BOARD_REV03) ? 1 : 0);
+#elif defined(CONFIG_MACH_JASPER)
+        return ((system_rev >= BOARD_REV08) ? 1 : 0);
+#elif defined(CONFIG_MACH_STRETTO)
+        return 1;
+#elif defined(CONFIG_MACH_SUPERIORLTE_SKT)
+        return 1;
+#else
+        return 0;
+#endif
+}
+
+
 static void __init msm8960_clock_pre_init(void)
 {
 	/* Initialize clock registers. */
