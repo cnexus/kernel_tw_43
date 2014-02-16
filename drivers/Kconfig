@@ -14,6 +14,8 @@ source "drivers/pnp/Kconfig"
 
 source "drivers/block/Kconfig"
 
+source "drivers/sensors/Kconfig"
+
 # misc before ide - BLK_DEV_SGIIOC4 depends on SGI_IOC4
 
 source "drivers/misc/Kconfig"
@@ -39,6 +41,8 @@ source "drivers/macintosh/Kconfig"
 source "drivers/net/Kconfig"
 
 source "drivers/isdn/Kconfig"
+
+source "drivers/telephony/Kconfig"
 
 # input before char - char/joystick depends on it. As does USB.
 
@@ -99,6 +103,11 @@ source "drivers/mmc/Kconfig"
 source "drivers/memstick/Kconfig"
 
 source "drivers/leds/Kconfig"
+
+source "drivers/nfc/Kconfig"
+
+# FELICA
+source "drivers/felica/Kconfig"
 
 source "drivers/switch/Kconfig"
 
