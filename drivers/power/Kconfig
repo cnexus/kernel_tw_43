@@ -415,12 +415,34 @@ config PM8921_BMS
 	help
 	  Say Y here to enable support for pm8921 chip bms subdevice
 
+config PM8921_SEC_CHARGER
+	bool "samsung charger driver"
+	default n
+	help
+	 Say Y here to enable support for samsung charging driver.
+	 PM8921-charger driver is default.
+	 But Samsung need modification to adjust verification spec.
+	 So Samsung charging dirver is seperated.
+
 config CHARGER_SMB347
 	tristate "Summit Microelectronics SMB347 Battery Charger"
 	depends on I2C
 	help
 	  Say Y to include support for Summit Microelectronics SMB347
 	  Battery Charger.
+
+config BATTERY_CTIA
+	bool "change cut off temp"
+	default n
+	help
+	  Say Y here to change cut off charging current only usa model
+	  beacause of CTIA.
+
+config BATTERY_SEC
+	bool "Enable SEC battery driver"
+	default n
+	help
+	  Say Y here to enable support for batteries with SEC features.
 
 config AB8500_BM
 	bool "AB8500 Battery Management Driver"
@@ -434,6 +456,12 @@ config AB8500_BATTERY_THERM_ON_BATCTRL
 	help
 	  Say Y to enable battery temperature measurements using
 	  thermistor connected on BATCTRL ADC.
+
+config SAMSUNG_LPM_MODE
+	bool "Off charging mode support in sec battery driver"
+	default n
+	help
+	 Say Y to include support for sec off charging support
 
 config WIRELESS_CHARGER
 	bool "Wireless Charger Configuration"

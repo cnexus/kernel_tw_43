@@ -118,6 +118,17 @@ config MMC_SDHCI_OF_HLWD
 
 	  If unsure, say N.
 
+config MMC_SDHCI_PLTFM
+	tristate "SDHCI support on the platform specific bus"
+	depends on MMC_SDHCI
+	help
+	  This selects the platform specific bus support for Secure Digital Host
+	  Controller Interface.
+
+	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.
+
 config MMC_SDHCI_CNS3XXX
 	tristate "SDHCI support on the Cavium Networks CNS3xxx SoC"
 	depends on ARCH_CNS3XXX
@@ -178,6 +189,18 @@ config MMC_SDHCI_S3C
 	  available with CONFIG_EXPERIMENTAL is selected.
 
 	  If you have a controller with this interface, say Y or M here.
+
+	  If unsure, say N.
+
+config MMC_SDHCI_PXA
+	tristate "Marvell PXA168/PXA910/MMP2 SD Host Controller support"
+	depends on ARCH_PXA || ARCH_MMP
+	select MMC_SDHCI
+	select MMC_SDHCI_IO_ACCESSORS
+	help
+	  This selects the Marvell(R) PXA168/PXA910/MMP2 SD Host Controller.
+	  If you have a PXA168/PXA910/MMP2 platform with SD Host Controller
+	  and a card slot, say Y or M here.
 
 	  If unsure, say N.
 
@@ -464,6 +487,19 @@ config MMC_MSM
 	help
 	  This provides support for the SD/MMC cell found in the
           MSM and QSD SOCs from Qualcomm.
+
+config MMC_MSM_SDIO_SUPPORT
+	boolean "Qualcomm MSM SDIO support"
+	depends on MMC_MSM
+	help
+	  This enables SDIO support in the msm_sdcc driver.
+
+config MMC_MSM_CARD_HW_DETECTION
+	boolean "Qualcomm MMC Hardware detection support"
+	depends on MMC_MSM
+	default n
+	help
+	  Select Y if the hardware has support to detect card insertion/removal.
 
 config MMC_MSM_SDC1_SUPPORT
 	boolean "Qualcomm SDC1 support"

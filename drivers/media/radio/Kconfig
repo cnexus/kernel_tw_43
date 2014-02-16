@@ -11,6 +11,24 @@ menuconfig RADIO_ADAPTERS
 
 if RADIO_ADAPTERS && VIDEO_V4L2
 
+config RADIO_CADET
+	tristate "ADS Cadet AM/FM Tuner"
+	depends on ISA && VIDEO_V4L2
+	---help---
+	  Choose Y here if you have one of these AM/FM radio cards, and then
+	  fill in the port address below.
+
+	  In order to control your radio card, you will need to use programs
+	  that are compatible with the Video For Linux API.  Information on
+	  this API and pointers to "v4l" programs may be found at
+	  <file:Documentation/video4linux/API.html>.
+
+	  Further documentation on this driver can be found on the WWW at
+	  <http://linux.blackhawke.net/cadet/>.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called radio-cadet.
+
 config RADIO_SI470X
 	bool "Silicon Labs Si470x FM Radio Receiver support"
 	depends on VIDEO_V4L2
@@ -305,6 +323,21 @@ config RADIO_GEMTEK_PROBE
 	  following ports will be probed: 0x20c, 0x30c, 0x24c, 0x34c, 0x248 and
 	  0x28c.
 
+config RADIO_MAXIRADIO
+	tristate "Guillemot MAXI Radio FM 2000 radio"
+	depends on VIDEO_V4L2 && PCI
+	---help---
+	  Choose Y here if you have this radio card.  This card may also be
+	  found as Gemtek PCI FM.
+
+	  In order to control your radio card, you will need to use programs
+	  that are compatible with the Video For Linux API.  Information on
+	  this API and pointers to "v4l" programs may be found at
+	  <file:Documentation/video4linux/API.html>.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called radio-maxiradio.
+
 config RADIO_MIROPCM20
 	tristate "miroSOUND PCM20 radio"
 	depends on ISA && ISA_DMA_API && VIDEO_V4L2 && SND
@@ -350,6 +383,14 @@ config RADIO_TERRATEC
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called radio-terratec.
+
+config RADIO_TERRATEC_PORT
+	hex "Terratec i/o port (normally 0x590)"
+	depends on RADIO_TERRATEC=y
+	default "590"
+	help
+	  Fill in the I/O port of your TerraTec FM radio card. If unsure, go
+	  with the default.
 
 config RADIO_TRUST
 	tristate "Trust FM radio card"

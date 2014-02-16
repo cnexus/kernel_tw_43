@@ -76,6 +76,7 @@ static int glove_value;
 #endif
 
 static int vol_mv_level = 33;
+extern unsigned int system_rev;
 
 #define KEYCODE_REG		0x00
 

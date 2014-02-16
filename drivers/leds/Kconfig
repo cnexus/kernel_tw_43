@@ -74,6 +74,13 @@ config LEDS_S3C24XX
 	  This option enables support for LEDs connected to GPIO lines
 	  on Samsung S3C24XX series CPUs, such as the S3C2410 and S3C2440.
 
+config LEDS_AMS_DELTA
+	tristate "LED Support for the Amstrad Delta (E3)"
+	depends on LEDS_CLASS
+	depends on MACH_AMS_DELTA
+	help
+	  This option enables support for the LEDs on Amstrad Delta (E3).
+
 config LEDS_NET48XX
 	tristate "LED Support for Soekris net48xx series Error LED"
 	depends on LEDS_CLASS
@@ -81,6 +88,16 @@ config LEDS_NET48XX
 	help
 	  This option enables support for the Soekris net4801 and net4826 error
 	  LED.
+
+config LEDS_NET5501
+	tristate "LED Support for Soekris net5501 series Error LED"
+	depends on LEDS_TRIGGERS
+	depends on X86 && LEDS_GPIO_PLATFORM && GPIO_CS5535
+	select LEDS_TRIGGER_DEFAULT_ON
+	default n
+	help
+	  Add support for the Soekris net5501 board (detection, error led
+	  and GPIO).
 
 config LEDS_FSG
 	tristate "LED Support for the Freecom FSG-3"
@@ -95,6 +112,14 @@ config LEDS_WRAP
 	depends on SCx200_GPIO
 	help
 	  This option enables support for the PCEngines WRAP programmable LEDs.
+
+config LEDS_ALIX2
+	tristate "LED Support for ALIX.2 and ALIX.3 series"
+	depends on LEDS_CLASS
+	depends on X86 && !GPIO_CS5535 && !CS5535_GPIO
+	help
+	  This option enables support for the PCEngines ALIX.2 and ALIX.3 LEDs.
+	  You have to set leds-alix2.force=1 for boards with Award BIOS.
 
 config LEDS_COBALT_QUBE
 	tristate "LED Support for the Cobalt Qube series front LED"
@@ -486,6 +511,24 @@ config LEDS_ASIC3
 	  cannot be used. This driver supports hardware blinking with an on+off
 	  period from 62ms to 125s. Say Y to enable LEDs on the HP iPAQ hx4700.
 
+config LEDS_MAX77693
+	bool "LED support for the MAX77693"
+	depends on LEDS_CLASS
+	depends on MFD_MAX77693
+	default n
+	help
+	  This option enables support for the LEDs on the MAX77693.
+	  This driver provides support for the voltage regulators of the MAX77693.
+	  The MAX77693 is a companion power management IC for the smart phones
+	  The Maxim Max 77693 handles PMIC, MUIC, and the flash LED control.
+
+config LEDS_AAT1290A
+	bool "LED support for the AAT1290A"
+	depends on LEDS_CLASS
+	default n
+	help
+	  This option enables support for the LEDs on the AAT1290A.
+
 config LEDS_RENESAS_TPU
 	bool "LED support for Renesas TPU"
 	depends on LEDS_CLASS && HAVE_CLK && GENERIC_GPIO
@@ -592,6 +635,20 @@ config LEDS_TRIGGER_SLEEP
 	depends on LEDS_TRIGGERS && HAS_EARLYSUSPEND
 	help
 	  This turns LEDs on when the screen is off but the cpu still running.
+
+config LEDS_MSM_TKEY
+        tristate "LED Support for touchkey LEDs"
+        default n
+        depends on ARCH_MSM
+        help
+	  This turns LEDs on when the touchscreen is on.
+
+config LEDS_MSM_KB
+        tristate "LED Support for keyboard LEDs"
+        default n
+        depends on ARCH_MSM
+        help
+	  This turns LEDs on when the touchscreen is on.
 
 comment "iptables trigger is under Netfilter config (LED target)"
 	depends on LEDS_TRIGGERS

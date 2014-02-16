@@ -65,6 +65,8 @@ static char g_szdevice_name[(VIBE_MAX_DEVICE_NAME_LENGTH
 							* NUM_ACTUATORS];
 static size_t g_cchdevice_name;
 
+extern unsigned int system_rev;
+
 static struct wake_lock vib_wake_lock;
 
 /* Flag indicating whether the driver is in use */
@@ -129,7 +131,7 @@ static int set_vibetonz(int timeout)
 	} else {
 		DbgOut((KERN_INFO "tspdrv: ENABLE\n"));
 		if (vibrator_drvdata.vib_model == HAPTIC_PWM) {
-			strength = 119;
+			strength = 120;
 			/* 90% duty cycle */
 			ImmVibeSPI_ForceOut_SetSamples(0, 8, 1, &strength);
 		} else { /* HAPTIC_MOTOR */
@@ -209,10 +211,36 @@ static void vibetonz_start(void)
 	timer.function = vibetonz_timer_func;
 
 	ret = timed_output_dev_register(&timed_output_vt);
-
-	if (ret)
+	if (ret < 0)
 		DbgOut((KERN_ERR
-		"tspdrv: timed_output_dev_register is fail\n"));
+		"tspdrv: timed_output_dev_register fail\n"));
+
+    if (vibrator_drvdata.vib_model == HAPTIC_PWM) {
+		ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_value);
+		if (ret < 0)
+			DbgOut((KERN_ERR
+			"tspdrv: device_create_file fail: pwm_value\n"));
+
+		ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_max);
+		if (ret < 0) {
+			pr_err("vibrator_init(): create sysfs fail: pwm_max\n");
+		}
+
+		ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_min);
+		if (ret < 0) {
+			pr_err("vibrator_init(): create sysfs fail: pwm_min\n");
+		}
+
+		ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_default);
+		if (ret < 0) {
+			pr_err("vibrator_init(): create sysfs fail: pwm_default\n");
+		}
+
+		ret = device_create_file(timed_output_vt.dev, &dev_attr_pwm_threshold);
+		if (ret < 0) {
+			pr_err("vibrator_init(): create sysfs fail: pwm_threshold\n");
+		}
+	}
 }
 
 /* File IO */
@@ -302,20 +330,84 @@ static __devinit int tspdrv_probe(struct platform_device *pdev)
 
 	/* This condition will be removed,after all board files changes done */
 	if (pdev->dev.platform_data == NULL) {
-		DbgOut(KERN_ERR "tspdrv: tspdrv probe failed, pdata is NULL");
-		return -EINVAL;
+		vibrator_drvdata.is_pmic_vib_en = 0;
+#if defined(CONFIG_MACH_M2_ATT) || defined(CONFIG_MACH_M2_VZW) || \
+defined(CONFIG_MACH_M2_SPR) || defined(CONFIG_MACH_M2_DCM) || \
+defined(CONFIG_MACH_M2_SKT) || defined(CONFIG_MACH_JAGUAR) || \
+defined(CONFIG_MACH_AEGIS2) || defined(CONFIG_MACH_COMANCHE)
+		vibrator_drvdata.vib_pwm_gpio = GPIO_VIB_PWM;
+		vibrator_drvdata.vib_en_gpio = GPIO_VIB_ON;
+		vibrator_drvdata.haptic_pwr_en_gpio = GPIO_HAPTIC_PWR_EN;
+		vibrator_drvdata.vib_model = HAPTIC_PWM;
+#endif
+#if defined(CONFIG_MACH_APEXQ) || defined(CONFIG_MACH_JASPER) || \
+defined(CONFIG_MACH_GOGH) || defined(CONFIG_MACH_ESPRESSO_ATT)
+		vibrator_drvdata.vib_pwm_gpio = GPIO_MOTOR_EN;
+		vibrator_drvdata.vib_en_gpio = GPIO_MOTOR_EN;
+		vibrator_drvdata.haptic_pwr_en_gpio = GPIO_MOTOR_EN;
+		vibrator_drvdata.vib_model = HAPTIC_MOTOR;
+#endif
+#ifdef CONFIG_MACH_M2_ATT
+		if (system_rev >= BOARD_REV04) {
+			vibrator_drvdata.vib_en_gpio = PM8921_GPIO_PM_TO_SYS(\
+						PMIC_GPIO_VIB_ON);
+			vibrator_drvdata.is_pmic_vib_en = 1;
+		}
+		if (system_rev >= BOARD_REV08) {
+			vibrator_drvdata.haptic_pwr_en_gpio = PM8921_GPIO_PM_TO_SYS(\
+						PMIC_GPIO_HAPTIC_PWR_EN);
+			vibrator_drvdata.is_pmic_haptic_pwr_en = 1;
+		}
+#endif
+#ifdef CONFIG_MACH_M2_VZW
+		if (system_rev >= BOARD_REV09) {
+			vibrator_drvdata.vib_en_gpio = PM8921_GPIO_PM_TO_SYS(\
+						PMIC_GPIO_VIB_ON);
+			vibrator_drvdata.is_pmic_vib_en = 1;
+		}
+#endif
+#ifdef CONFIG_MACH_M2_SPR
+	if (system_rev >= BOARD_REV03) {
+			vibrator_drvdata.vib_en_gpio = PM8921_GPIO_PM_TO_SYS(\
+						PMIC_GPIO_VIB_ON);
+			vibrator_drvdata.is_pmic_vib_en = 1;
+		}
+#endif
+#ifdef CONFIG_MACH_M2_DCM
+	if (system_rev >= BOARD_REV01) {
+			vibrator_drvdata.vib_en_gpio = PM8921_GPIO_PM_TO_SYS(\
+						PMIC_GPIO_VIB_ON);
+			vibrator_drvdata.is_pmic_vib_en = 1;
+		}
+#endif
+#ifdef CONFIG_MACH_AEGIS2
+	if (system_rev >= BOARD_REV01) {
+			vibrator_drvdata.vib_en_gpio = PM8921_GPIO_PM_TO_SYS(\
+						PMIC_GPIO_VIB_ON);
+			vibrator_drvdata.is_pmic_vib_en = 1;
+		}
+#endif
 	} else {
 		pdata = pdev->dev.platform_data;
 		vibrator_drvdata.vib_model = pdata->vib_model;
 		vibrator_drvdata.is_pmic_haptic_pwr_en = \
-				pdata->is_pmic_haptic_pwr_en;
+						pdata->is_pmic_haptic_pwr_en;
+		if (pdata->is_pmic_haptic_pwr_en)
+			vibrator_drvdata.haptic_pwr_en_gpio = \
+			PM8921_GPIO_PM_TO_SYS(pdata->haptic_pwr_en_gpio);
+		else
+			vibrator_drvdata.haptic_pwr_en_gpio = \
+				pdata->haptic_pwr_en_gpio;
 		if (pdata->vib_model == HAPTIC_PWM) {
-			if (pdata->is_pmic_vib_pwm)
-				vibrator_drvdata.vib_pwm_gpio = \
-				PM8921_GPIO_PM_TO_SYS(pdata->vib_pwm_gpio);
+			vibrator_drvdata.vib_pwm_gpio = pdata->vib_pwm_gpio;
+			vibrator_drvdata.is_pmic_vib_en = \
+				pdata->is_pmic_vib_en;
+			if (pdata->is_pmic_vib_en)
+				vibrator_drvdata.vib_en_gpio = \
+				PM8921_GPIO_PM_TO_SYS(pdata->vib_en_gpio);
 			else
-				vibrator_drvdata.vib_pwm_gpio =
-					pdata->vib_pwm_gpio;
+				vibrator_drvdata.vib_en_gpio = \
+						pdata->vib_en_gpio;
 		}
 		vibrator_drvdata.power_onoff = pdata->power_onoff;
 	}
@@ -324,13 +416,13 @@ static __devinit int tspdrv_probe(struct platform_device *pdev)
 	if (g_nmajor < 0) {
 		DbgOut((KERN_ERR "tspdrv: can't get major number.\n"));
 		ret = g_nmajor;
-		return ret;
+		goto register_err;
 	}
 #else
 	ret = misc_register(&miscdev);
 	if (ret) {
 		DbgOut((KERN_ERR "tspdrv: misc_register failed.\n"));
-		return ret;
+		goto register_err;
 	}
 #endif
 
@@ -346,12 +438,11 @@ static __devinit int tspdrv_probe(struct platform_device *pdev)
 	for (i = 0; i < NUM_ACTUATORS; i++) {
 		char *szName = g_szdevice_name + g_cchdevice_name;
 		ImmVibeSPI_Device_GetName(i,
-				szName, VIBE_MAX_DEVICE_NAME_LENGTH);
+			szName, VIBE_MAX_DEVICE_NAME_LENGTH);
 
 		/* Append version information and get buffer length */
-		strlcat(szName, VERSION_STR, sizeof(VERSION_STR));
-		g_cchdevice_name +=
-			strnlen(szName, (VIBE_MAX_DEVICE_NAME_LENGTH+VERSION_STR_LEN)*NUM_ACTUATORS);
+		strncat(szName, VERSION_STR, sizeof(VERSION_STR));
+		g_cchdevice_name += strnlen(szName, sizeof(szName));
 
 		g_samples_buffer[i].nindex_playing_buffer = -1;/* Not playing */
 		g_samples_buffer[i].actuator_samples[0].nbuffer_size = 0;
@@ -362,6 +453,15 @@ static __devinit int tspdrv_probe(struct platform_device *pdev)
 	vibetonz_start();
 
 	return 0;
+
+register_err:
+#ifdef IMPLEMENT_AS_CHAR_DRIVER
+	unregister_chrdev(g_nmajor, MODULE_NAME);
+#else
+	misc_deregister(&miscdev);
+#endif
+
+	return ret;
 }
 
 static int __devexit tspdrv_remove(struct platform_device *pdev)
@@ -459,6 +559,12 @@ static ssize_t write(struct file *file, const char *buf, size_t count,
 	if (0 != copy_from_user(g_cwrite_buffer, buf, count)) {
 		/* Failed to copy all the data, exit */
 		DbgOut((KERN_ERR "tspdrv: copy_from_user failed.\n"));
+		return 0;
+	}
+
+	/* Check buffer size */
+	if ((count <= SPI_HEADER_SIZE) || (count > SPI_BUFFER_SIZE)) {
+		DbgOut((KERN_ERR "tspdrv: invalid write buffer size.\n"));
 		return 0;
 	}
 

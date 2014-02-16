@@ -13,6 +13,10 @@ config VIDEO_MHL_V2
 	required.
 	Say Y here if this support mhl_version2
 
+config MHL_D3_SUPPORT
+	bool "Support D3 mode in mhl"
+	default n
+
 config SAMSUNG_MHL_8240
 	bool "Enable Sii8240 MHL Chip Driver"
 	default n

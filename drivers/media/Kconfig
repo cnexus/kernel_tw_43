@@ -133,6 +133,12 @@ source "drivers/media/dvb/Kconfig"
 source "drivers/media/tdmb/Kconfig"
 
 #
+# Oneseg Drivers
+#
+
+source "drivers/media/nmi326/Kconfig"
+
+#
 # ISDB-Tmm Drivers
 #
 source "drivers/media/isdbtmm/Kconfig"

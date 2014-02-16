@@ -60,6 +60,9 @@
 #include <linux/exportfs.h>
 #include <linux/mount.h>
 #include <linux/vfs.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+#include <linux/aio.h>
+#endif
 #include <linux/parser.h>
 #include <linux/uio.h>
 #include <linux/writeback.h>
@@ -1405,9 +1408,15 @@ static struct inode *exfat_iget(struct super_block *sb, loff_t i_pos) {
 	struct hlist_node *node;
 	struct hlist_head *head = sbi->inode_hashtable + exfat_hash(i_pos);
 	struct inode *inode = NULL;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,9,0)
+	struct hlist_node *node;
 
 	spin_lock(&sbi->inode_hash_lock);
 	hlist_for_each_entry(info, node, head, i_hash_fat) {
+#else
+	spin_lock(&sbi->inode_hash_lock);
+	hlist_for_each_entry(info, head, i_hash_fat) {
+#endif
 		CHECK_ERR(info->vfs_inode.i_sb != sb);
 
 		if (i_pos != info->i_pos)

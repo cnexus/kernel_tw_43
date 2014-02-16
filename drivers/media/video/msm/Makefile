@@ -29,7 +29,7 @@ else
   obj-$(CONFIG_ARCH_MSM8X60) += msm_vpe1.o
   obj-$(CONFIG_ARCH_MSM7X30) += msm_vpe1.o
 endif
-obj-$(CONFIG_ARCH_MSM8960) += msm_vpe.o
+obj-$(CONFIG_ARCH_MSM8960) += msm_io_8960.o msm_vfe32.o msm_vpe.o
 obj-$(CONFIG_MT9T013) += mt9t013.o mt9t013_reg.o
 obj-$(CONFIG_SN12M0PZ) += sn12m0pz.o sn12m0pz_reg.o
 obj-$(CONFIG_MT9P012) += mt9p012_reg.o
@@ -55,4 +55,5 @@ obj-$(CONFIG_OV5640) += ov5640.o
 obj-$(CONFIG_MT9D112) += mt9d112.o mt9d112_reg.o
 
 obj-$(CONFIG_MT9D113) += mt9d113.o mt9d113_reg.o
+obj-$(CONFIG_FB_MSM_WRITEBACK_MSM_PANEL) += wfd/
 obj-$(CONFIG_MSM_V4L2_VIDEO_OVERLAY_DEVICE) += msm_v4l2_video.o

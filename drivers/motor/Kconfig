@@ -15,3 +15,7 @@ config MOTOR_DRV_MAX77693
 	default n
 
 	depends on MFD_MAX77693
+
+config HAPTIC_DRV2603
+	bool "TI DRV2603 haptic motor"
+	default n

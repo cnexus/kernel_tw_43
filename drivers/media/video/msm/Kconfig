@@ -31,6 +31,41 @@ config MT9D112
 	default y
 	---help---
 	  MICRON 2M YUV Sensor
+config ISX012
+	bool "Sensor ISX012 (5M)"
+	default n
+	---help---
+	SONY 5 MP CMOS Sensor
+config S5K4ECGX
+	bool "Sensor S5K4ECGX (5M)"
+	default n
+	---help---
+	LSI 5 MP CMOS Sensor
+config S5K5CCGX
+	bool "Sensor S5K5CCGX (3M)"
+	default n
+	---help---
+	LSI 3 MP CMOS Sensor
+config S5K8AAY
+	bool "Sensor S5K8AAY (1.3M)"
+	default n
+	---help---
+	LSI 1.3 MP CMOS Sensor
+config DB8131M
+	bool "Sensor DB8131M (1.3M)"
+	default n
+	---help---
+	DB 1.3 MP CMOS Sensor
+config SR030PC50
+	bool "Sensor SR030PC50 (VGA)"
+	default n
+	---help---
+	SILICON VGA CMOS Sensor
+#config S5K6AA
+#	bool "Sensor S5K6AA (1.3M)"
+#	default y
+#	---help---
+#	LSI 1.3 MP CMOS Sensor
 config S5K6B2YX
 	bool "Sensor S5K6B2YX (BAYER 2M)"
 	depends on MSM_CAMERA
