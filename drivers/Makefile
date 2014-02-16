@@ -92,6 +92,7 @@ obj-$(CONFIG_WATCHDOG)		+= watchdog/
 obj-$(CONFIG_MD)		+= md/
 obj-$(CONFIG_BT)		+= bluetooth/
 obj-$(CONFIG_ACCESSIBILITY)	+= accessibility/
+obj-$(CONFIG_ACCESSORY)         += accessory/
 obj-$(CONFIG_ISDN)		+= isdn/
 obj-$(CONFIG_EDAC)		+= edac/
 obj-$(CONFIG_MCA)		+= mca/
@@ -141,6 +142,8 @@ obj-$(CONFIG_PM_DEVFREQ)	+= devfreq/
 #MobiCore
 obj-$(CONFIG_MOBICORE_SUPPORT)  += gud/
 
+obj-$(CONFIG_CORESIGHT)		+= coresight/
+obj-$(CONFIG_NEW_SENSORS)       += sensors/
 obj-$(CONFIG_BATTERY_SAMSUNG)	+= battery/
 obj-$(CONFIG_SENSORS_SSP)	+= sensorhub/
 obj-$(CONFIG_VIBETONZ)          += motor/
@@ -150,7 +153,6 @@ obj-$(CONFIG_IRDA_MC96)		+= irda/
 obj-$(CONFIG_AUTHENTEC_VPNCLIENT_INTERCEPTOR) += interceptor/
 
 obj-$(CONFIG_FELICA) += felica/
-
 ifeq (1, $(shell if [ -d ../../../../../../kernel/drivers/exfat ] ; then echo 1 ; fi))
-	obj-y   += exfat/
+obj-y   += exfat/
 endif
