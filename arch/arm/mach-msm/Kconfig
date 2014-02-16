@@ -178,6 +178,10 @@ config ARCH_MSM8960
 	select MSM_KRAIT_WFE_FIXUP
 	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
+	select GENERIC_TIME_VSYSCALL
+	select USE_USER_ACCESSIBLE_TIMERS
+	select ARM_USE_USER_ACCESSIBLE_TIMERS
+	select MSM_USE_USER_ACCESSIBLE_TIMERS
 
 config ARCH_MSM8930
 	bool "MSM8930"
@@ -212,6 +216,10 @@ config ARCH_MSM8930
 	select MSM_KRAIT_WFE_FIXUP
 	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
+	select GENERIC_TIME_VSYSCALL
+	select USE_USER_ACCESSIBLE_TIMERS
+	select ARM_USE_USER_ACCESSIBLE_TIMERS
+	select MSM_USE_USER_ACCESSIBLE_TIMERS
 
 config ARCH_APQ8064
 	bool "APQ8064"
@@ -242,6 +250,10 @@ config ARCH_APQ8064
 	select SPARSEMEM_ALLOC_MEM_MAP_TOGETHER if SPARSEMEM
 	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
+	select GENERIC_TIME_VSYSCALL
+	select USE_USER_ACCESSIBLE_TIMERS
+	select ARM_USE_USER_ACCESSIBLE_TIMERS
+	select MSM_USE_USER_ACCESSIBLE_TIMERS
 
 config ARCH_MSM8974
 	bool "MSM8974"
@@ -406,13 +418,14 @@ config  ARCH_MSM_SCORPIONMP
 	select ARCH_MSM_SCORPION
 	select MSM_SMP
 	select HAVE_ARCH_HAS_CURRENT_TIMER
-	select MSM_JTAG if MSM_QDSS
+	select MSM_JTAG if CORESIGHT_ETM
 	bool
 
 config  ARCH_MSM_KRAITMP
 	select ARCH_MSM_KRAIT
 	select MSM_SMP
 	select HAVE_ARCH_HAS_CURRENT_TIMER
+	select MSM_JTAG if CORESIGHT_ETM
 	bool
 	select HAVE_HW_BRKPT_RESERVED_RW_ACCESS
 
@@ -1555,6 +1568,11 @@ config MSM_BAM_DMUX
 	  provides a means to support more logical channels
 	  via muxing than BAM could without muxing.
 
+config MSM_BAM_DMUX_NOLOCK
+	bool "BAM Data Mux Driver: workaround for modem crash"
+	depends on MSM_BAM_DMUX
+	default n
+
 config MSM_N_WAY_SMD
 	depends on (MSM_SMD && !(ARCH_MSM7X01A))
 	default y
@@ -1641,6 +1659,15 @@ config MSM_SMD_QMI
 
 	  If in doubt, say yes.
 
+config MSM_SMD_PKT
+	bool "SMD Packet Driver"
+	depends on MSM_SMD
+	default y
+	help
+	  Provides a binary SMD non-muxed packet port interface.
+
+	  If in doubt, say yes.
+
 config MSM_SDIO_CMUX
 	bool "SDIO CMUX Driver"
 	depends on MSM_SDIO_AL
@@ -1690,6 +1717,26 @@ config MSM_IPC_ROUTER_SMD_XPRT
 	bool "MSM SMD XPRT Layer"
 	help
 	  SMD Transport Layer for IPC Router
+
+config MSM_IPC_ROUTER_HSIC_XPRT
+	depends on USB_QCOM_IPC_BRIDGE
+	depends on MSM_IPC_ROUTER
+	bool "MSM HSIC XPRT Layer"
+	help
+	  HSIC Transport Layer that enables off-chip communication of
+	  IPC Router. When the HSIC endpoint becomes available, this layer
+	  registers the transport with IPC Router and enable message
+	  exchange.
+
+config MSM_IPC_ROUTER_SECURITY
+	depends on MSM_IPC_ROUTER
+	bool "MSM IPC Router Security support"
+	help
+	  This feature of IPC Router will enforce security rules
+	  configured by a security script from the user-space. IPC Router
+	  once configured with the security rules will ensure that the
+	  sender of the message to a service belongs to the relevant
+	  Linux group as configured by the security script.
 
 config MSM_ONCRPCROUTER_DEBUG
 	depends on MSM_ONCRPCROUTER
@@ -2146,6 +2193,12 @@ config MSM_PIL_RIVA
 	  Riva is the wireless subsystem processor used in bluetooth, wireless
 	  LAN, and FM software applications.
 
+config MSM_INSECURE_PIL_RIVA
+	bool "Force Riva PIL to insecure mode"
+	depends on MSM_PIL_RIVA
+	help
+	  Force Riva PIL to use non-secure boot.
+
 config MSM_PIL_TZAPPS
 	tristate "TZApps Boot Support"
 	depends on MSM_PIL
@@ -2212,6 +2265,14 @@ config MSM_LPASS_8960
 	 This option enables the lpass driver for the MSM8960 and MSM9615. This monitors
 	 lpass hardware watchdog interrupt lines and plugs into the subsystem
 	 restart and PIL drivers. For MSM9615, it only supports a full chip reset.
+
+config SEC_SSR_DUMP
+	bool "MSM 8960 ramdump during silent restart module"
+	help
+	This option enables SSR debug feature. SSR debug dump collection
+	feature is to be enabled only during debug level MID through respective
+	def_config files. This should be enabled only when Subsystem Restart
+	is enabled.
 
 config MSM_WCNSS_SSR_8960
 	tristate "MSM 8960 WCNSS restart module"
@@ -2449,6 +2510,12 @@ config BT_MSM_PINTEST
 	  Bluetooth MSM Pin Connectivity test module.
 	  This driver provides support for verifying the MSM to BT pin
 	  connectivity.
+
+config BT_BCM4334
+        bool "Enable BCM4334 driver"
+        default n
+        help
+          Adds BCM4334 RFKILL driver for Broadcom BCM4334 chipset
 
 config BT_BCM4335
 	bool "Enable BCM4335 driver"
@@ -2772,6 +2839,11 @@ config MSM_DCVS
 	  The DCVS manager allows idle driver to feed the idle information to the
 	  algorithm and the algorithm returns a frequency for the core which is
 	  passed to the frequency change driver.
+
+config MSM_DCVS_FOR_MSM8260A
+	bool "MSM8260a DVFS support"
+	help
+	  To divide the dcvs for MSM8260A Model.
 
 config MSM_CPR
 	tristate "Use MSM CPR in S/W mode"
